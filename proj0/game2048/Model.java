@@ -114,6 +114,8 @@ public class Model extends Observable {
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
 
+//        if (side == side.North)
+
         checkGameOver();
         if (changed) {
             setChanged();
@@ -138,8 +140,8 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < b.size(); i++) {
+            for (int j = 0; j < b.size(); j++) {
                 if (b.tile(i, j) == null) {
                     return true;
                 }
@@ -155,8 +157,8 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++){
+        for (int i = 0; i < b.size(); i++) {
+            for (int j = 0; j < b.size(); j++){
                 if (b.tile(i, j) != null) {
                     if (b.tile(i, j).value() == MAX_PIECE) {
                         return true;
@@ -178,8 +180,8 @@ public class Model extends Observable {
         if (emptySpaceExists(b)) {
             return true;
         } else {
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
+            for (int i = 0; i < b.size(); i++) {
+                for (int j = 0; j < b.size(); j++) {
                     if (j - 1 >= 0) {
                         if (b.tile(i, j).value() == b.tile(i, j - 1).value()) {
                             return true;
