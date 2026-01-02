@@ -119,27 +119,30 @@ public class Model extends Observable {
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
 
-        if (side == Side.NORTH) {
-            for (int i = 0; i < board.size(); i++) {
-                for (int j = 0; j < board.size(); j++) {
-                    formCredit.haveMerged[i][j] = 0;
-                    if (tile(i, j) == null) {
-                        formCredit.newArray[i][j] = 0;
-                    } else {
-                        formCredit.newArray[i][j] = tile(i, j).value();
-                    }
-                }
-            }
-            for (int i = 0; i < board.size(); i++) {
-                for (int j = board.size() - 1; j >= 0; j--) {
-                    Tile t = board.tile(i, j);
-                    if (t != null) {
-                        moveUpOneTile(t, board);
-                    }
-                    changed = true;
+        board.setViewingPerspective(side);
+        for (int i = 0; i < board.size(); i++) {
+            for (int j = 0; j < board.size(); j++) {
+                formCredit.haveMerged[i][j] = 0;
+                if (tile(i, j) == null) {
+                    formCredit.newArray[i][j] = 0;
+                } else {
+                    formCredit.newArray[i][j] = tile(i, j).value();
                 }
             }
         }
+        for (int i = 0; i < board.size(); i++) {
+            for (int j = board.size() - 1; j >= 0; j--) {
+                Tile t = board.tile(i, j);
+                if (t != null) {
+                    boolean tileChanged = moveUpOneTile(t, board, i, j);
+                    if (tileChanged) {
+                        changed = true;
+                    }
+                }
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);
+
 
         checkGameOver();
         if (changed) {
@@ -148,24 +151,32 @@ public class Model extends Observable {
         return changed;
     }
 
-    private void moveUpOneTile(Tile tile, Board b) {
+    private boolean moveUpOneTile(Tile tile, Board b, int c, int r) {
         int moveup = 0;
         int addScore = 0;
-        for (int j = 1; j < b.size() - tile.row(); j++) {
-            if (formCredit.newArray[tile.col()][tile.row() + j] == 0) {
+        boolean moved = false;
+
+        for (int j = 1; j < b.size() - r; j++) {
+            if (formCredit.newArray[c][r + j] == 0) {
                 moveup++;
-            } else if (formCredit.newArray[tile.col()][tile.row() + j] == tile.value() && formCredit.haveMerged[tile.col()][tile.row() + j] == 0) {
+            } else if (formCredit.newArray[c][r + j] == tile.value() && formCredit.haveMerged[c][r + j] == 0) {
                 moveup++;
                 addScore += 2 * tile.value();
-                formCredit.newArray[tile.col()][tile.row()] = 0;
-                formCredit.newArray[tile.col()][tile.row() + j] = 2 * tile.value();
-                formCredit.haveMerged[tile.col()][tile.row() + j] = 1;
+
+                formCredit.newArray[c][r] = 0;
+                formCredit.newArray[c][r + j] = 2 * tile.value();
+                formCredit.haveMerged[c][r + j] = 1;
+                break;
             } else {
                 break;
             }
         }
-        board.move(tile.col(), tile.row() + moveup, tile);
+        if (moveup > 0) {
+            board.move(c, r + moveup, tile);
+            moved = true;
+        }
         score += addScore;
+        return moved;
     }
 
     /** Checks if the game is over and sets the gameOver variable
