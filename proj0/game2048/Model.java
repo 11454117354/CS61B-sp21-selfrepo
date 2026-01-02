@@ -106,10 +106,6 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
-    public static class formCredit {
-        public static int[][] newArray = new int[4][4];
-        public static int[][] haveMerged = new int[4][4];
-    }
 
     public boolean tilt(Side side) {
         boolean changed;
@@ -120,24 +116,13 @@ public class Model extends Observable {
         // changed local variable to true.
 
         board.setViewingPerspective(side);
+
         for (int i = 0; i < board.size(); i++) {
-            for (int j = 0; j < board.size(); j++) {
-                formCredit.haveMerged[i][j] = 0;
-                if (tile(i, j) == null) {
-                    formCredit.newArray[i][j] = 0;
-                } else {
-                    formCredit.newArray[i][j] = tile(i, j).value();
-                }
-            }
-        }
-        for (int i = 0; i < board.size(); i++) {
+            boolean[] haveMerged = new boolean[board.size()];
             for (int j = board.size() - 1; j >= 0; j--) {
-                Tile t = board.tile(i, j);
-                if (t != null) {
-                    boolean tileChanged = moveUpOneTile(t, board, i, j);
-                    if (tileChanged) {
-                        changed = true;
-                    }
+                boolean tileChanged = moveUpOneTile(haveMerged, board, i, j);
+                if (tileChanged) {
+                    changed = true;
                 }
             }
         }
@@ -151,32 +136,35 @@ public class Model extends Observable {
         return changed;
     }
 
-    private boolean moveUpOneTile(Tile tile, Board b, int c, int r) {
+    private boolean moveUpOneTile(boolean[] haveMerged, Board b, int c, int r) {
+        Tile tile = b.tile(c, r);
         int moveup = 0;
-        int addScore = 0;
-        boolean moved = false;
+        if (tile == null) {
+            return false;
+        }
 
-        for (int j = 1; j < b.size() - r; j++) {
-            if (formCredit.newArray[c][r + j] == 0) {
-                moveup++;
-            } else if (formCredit.newArray[c][r + j] == tile.value() && formCredit.haveMerged[c][r + j] == 0) {
-                moveup++;
-                addScore += 2 * tile.value();
+        while (r + moveup + 1 < b.size() && b.tile(c, r + moveup+ 1) == null) {
+            moveup++;
+        }
 
-                formCredit.newArray[c][r] = 0;
-                formCredit.newArray[c][r + j] = 2 * tile.value();
-                formCredit.haveMerged[c][r + j] = 1;
-                break;
-            } else {
-                break;
+        Tile aboveT = (r + moveup + 1 < b.size()) ? b.tile(c, r + moveup + 1) : null;
+        int nextPosition = r + moveup + 1;
+        if (nextPosition < b.size()) {
+            if (aboveT != null
+                    && tile.value() == aboveT.value()
+                    && !haveMerged[nextPosition]) {
+                b.move(c, nextPosition, tile);
+                score += 2 * tile.value();
+                haveMerged[nextPosition] = true;
+                return true;
             }
         }
+
         if (moveup > 0) {
             board.move(c, r + moveup, tile);
-            moved = true;
+            return true;
         }
-        score += addScore;
-        return moved;
+        return false;
     }
 
     /** Checks if the game is over and sets the gameOver variable
