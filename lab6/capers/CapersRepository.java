@@ -1,10 +1,12 @@
 package capers;
 
 import java.io.File;
+import java.io.IOException;
+
 import static capers.Utils.*;
 
 /** A repository for Capers 
- * @author TODO
+ * @author Chen
  * The structure of a Capers Repository is as follows:
  *
  * .capers/ -- top level folder for all persistent data in your lab12 folder
@@ -32,6 +34,24 @@ public class CapersRepository {
      */
     public static void setupPersistence() {
         // TODO
+        File CAPERS_FOLDER = join(CWD, ".capers");
+        if (!CAPERS_FOLDER.exists()) {
+            CAPERS_FOLDER.mkdir();
+        }
+
+        File DOGS_FOLDER = join(CAPERS_FOLDER, "dogs");
+        if (!DOGS_FOLDER.exists()) {
+            DOGS_FOLDER.mkdir();
+        }
+
+        File STORY_FILE = join(CAPERS_FOLDER, "story");
+        if (!STORY_FILE.exists()) {
+            try {
+                STORY_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
