@@ -51,7 +51,6 @@
 ├─ objects/
 │   ├─ commits/
 │   └─ blobs/
-├─ refs/
 ├─ staging/
 HEAD
 CURRENT_BRANCH
