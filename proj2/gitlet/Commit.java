@@ -1,5 +1,6 @@
 package gitlet;
 
+import java.io.File;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -8,6 +9,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+
+import static gitlet.Utils.join;
+import static gitlet.Utils.writeObject;
 
 /** Represents a gitlet commit object.
  *  This Commit class set up commits by input message, timeStamp, .etc
@@ -39,7 +43,6 @@ public class Commit implements Serializable {
     /** Map of tracked files (filename and blob ID). */
     private final Map<String, String> trackedFiles;
 
-
     /** Constructor of the initial commit. */
     public Commit(String message) {
         this.message = message;
@@ -62,5 +65,14 @@ public class Commit implements Serializable {
 
     private String generateID() {
         return Utils.sha1(message, timestamp, parent, trackedFiles.toString());
+    }
+
+    /** Useful methods of commit. */
+    public String getId() {
+        return this.id;
+    }
+
+    public void save() {
+        writeObject(Repository.COMMITS_DIR, this);
     }
 }

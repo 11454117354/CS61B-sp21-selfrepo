@@ -18,17 +18,17 @@ public class Repository {
      */
 
     /** The current working directory. */
-    private static final File CWD = new File(System.getProperty("user.dir"));
+    public static final File CWD = new File(System.getProperty("user.dir"));
     /** Directories. */
-    private static final File GITLET_DIR = join(CWD, ".gitlet");
-    private static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
-    private static final File STAGING_DIR = join(GITLET_DIR, "staging");
-    private static final File REFS_DIR = join(GITLET_DIR, "refs");
-    private static final File COMMITS_DIR = join(OBJECTS_DIR, "commits");
-    private static final File BLOBS_DIR = join(OBJECTS_DIR, "blobs");
-    private static final File HEADS_DIR = join(REFS_DIR, "heads");
-    private static final File ADD_DIR = join(STAGING_DIR, "add");
-    private static final File REMOVE_DIR = join(STAGING_DIR, "remove");
+    public static final File GITLET_DIR = join(CWD, ".gitlet");
+    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    public static final File STAGING_DIR = join(GITLET_DIR, "staging");
+    public static final File REFS_DIR = join(GITLET_DIR, "refs");
+    public static final File COMMITS_DIR = join(OBJECTS_DIR, "commits");
+    public static final File BLOBS_DIR = join(OBJECTS_DIR, "blobs");
+    public static final File HEADS_DIR = join(REFS_DIR, "heads");
+    public static final File ADD_DIR = join(STAGING_DIR, "add");
+    public static final File REMOVE_DIR = join(STAGING_DIR, "remove");
 
     /** TODO: javadoc here */
     public static void init() {
@@ -46,7 +46,17 @@ public class Repository {
         ADD_DIR.mkdir();
         REMOVE_DIR.mkdir();
 
-        // TODO: initialize the first commit(go and build commit class), and create master branch and HEAD pointer.
+        // Create initial commit, and serialize it.
         Commit initialCommit = new Commit("initial commit");
+        initialCommit.save();
+
+        // Write initial commit id into master pointer.
+        String id = initialCommit.getId();
+        File masterRef =  join(HEADS_DIR, "master");
+        writeContents(masterRef, id);
+
+        // Set HEAD pointer (point to master)
+        File headFile = join(GITLET_DIR, "HEAD");
+        writeContents(headFile, "master");
     }
 }
