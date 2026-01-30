@@ -1,6 +1,8 @@
 package gitlet;
 
 import java.io.File;
+import java.io.IOException;
+
 import static gitlet.Utils.*;
 
 /** Represents a gitlet repository.
@@ -39,7 +41,7 @@ public class Repository {
         GITLET_DIR.mkdir();
         OBJECTS_DIR.mkdir();
         STAGING_DIR.mkdir();
-        REMOVE_DIR.mkdir();
+        REFS_DIR.mkdir();
         COMMITS_DIR.mkdir();
         BLOBS_DIR.mkdir();
         HEADS_DIR.mkdir();
@@ -53,10 +55,20 @@ public class Repository {
         // Write initial commit id into master pointer.
         String id = initialCommit.getId();
         File masterRef =  join(HEADS_DIR, "master");
+        try {
+            masterRef.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         writeContents(masterRef, id);
 
         // Set HEAD pointer (point to master)
         File headFile = join(GITLET_DIR, "HEAD");
+        try {
+            headFile.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         writeContents(headFile, "master");
     }
 }

@@ -64,7 +64,8 @@ public class Commit implements Serializable {
     }
 
     private String generateID() {
-        return Utils.sha1(message, timestamp, parent, trackedFiles.toString());
+        String safeParent = parent == null ? "" : parent;
+        return Utils.sha1(message, timestamp, safeParent, trackedFiles.toString());
     }
 
     /** Useful methods of commit. */
@@ -73,6 +74,7 @@ public class Commit implements Serializable {
     }
 
     public void save() {
-        writeObject(Repository.COMMITS_DIR, this);
+        File commitFile = Utils.join(Repository.COMMITS_DIR, this.id);
+        writeObject(commitFile, this);
     }
 }
