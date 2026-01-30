@@ -33,7 +33,7 @@ public class Repository {
     /** The 'blobs' directory. */
     public static final File BLOBS_DIR = join(OBJECTS_DIR, "blobs");
 
-    /* TODO: fill in the rest of this class. */
+    /** TODO: javadoc here */
     public static void init() {
         if (GITLET_DIR.exists()) {
             System.out.println("A Gitlet version-control system already exists in the current directory.");
@@ -44,6 +44,8 @@ public class Repository {
         STAGING_DIR.mkdir();
         COMMITS_DIR.mkdir();
         BLOBS_DIR.mkdir();
+
+        /** TODO: initialize the first commit(go and build commit class), and create master branch and HEAD pointer */
         commit("initial commit");
     }
 
