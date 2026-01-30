@@ -48,14 +48,14 @@
 通过将对象写入存储中实现：
 ````
 .gitlet/
-├── HEAD
+├── HEAD(存储HEAD指针的位置)
 ├── objects/
 │   ├── commits/
-│   └── blobs/
+│   └── blobs/(存储每个add进的文件，名字是hash)
 ├── refs/
-│   └── heads/
+│   └── heads/(内含master文件，内容是master指向的commit的hash)
 ├── staging/
-│   ├── add/
+│   ├── add/(存放刚add的文件，文件名为原文件名，blobId(hash)作为文件内容)
 │   └── remove/
 ````
 Objects使用Java serialization写入存储。

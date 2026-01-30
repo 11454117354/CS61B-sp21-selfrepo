@@ -32,6 +32,11 @@ public class Repository {
     public static final File ADD_DIR = join(STAGING_DIR, "add");
     public static final File REMOVE_DIR = join(STAGING_DIR, "remove");
 
+    /** Files. */
+    public static final File MASTER_FILE =  join(HEADS_DIR, "master");
+    public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
+
+
     /** TODO: javadoc here */
     public static void init() {
         if (GITLET_DIR.exists()) {
@@ -54,21 +59,85 @@ public class Repository {
 
         // Write initial commit id into master pointer.
         String id = initialCommit.getId();
-        File masterRef =  join(HEADS_DIR, "master");
         try {
-            masterRef.createNewFile();
+            MASTER_FILE.createNewFile();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        writeContents(masterRef, id);
+        writeContents(MASTER_FILE, id);
 
         // Set HEAD pointer (point to master)
-        File headFile = join(GITLET_DIR, "HEAD");
         try {
-            headFile.createNewFile();
+            HEAD_FILE.createNewFile();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        writeContents(headFile, "master");
+        writeContents(HEAD_FILE, id);
+    }
+
+    public static void add(String fileName) {
+        final File ADD_FILE = join(CWD, fileName);
+
+        // Check if the file exists.
+        if (!ADD_FILE.exists()) {
+            System.out.println("File does not exist.");
+            System.exit(0);
+        }
+
+        // Generate the SHA-1 hash.
+        String blobId = Utils.sha1((Object) readContents(ADD_FILE));
+
+        // Form the blob file and fill in the content
+        final File BLOB_FILE = join(BLOBS_DIR, blobId);
+        if (!BLOB_FILE.exists()) {
+            try {
+                BLOB_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeContents(BLOB_FILE, readContentsAsString(ADD_FILE));
+        }
+
+        // Check if current head commit is in track of this file.
+        // TODO: After finishing commit method, come back and check if this part is right.
+        Commit headCommit = getHeadCommit();
+        if (headCommit.getTrackedFiles().containsKey(fileName)) {
+            String headBlobId = headCommit.getTrackedFiles().get(fileName); // The hash of the existing old file.
+
+            // If the added file is identical to that tracked by head commit, do not add it into stage area.
+            if (headBlobId.equals(blobId)) {
+                File EXISTING_IDENTICAL_FILE_IN_ADD = join(ADD_DIR, fileName);
+                if (EXISTING_IDENTICAL_FILE_IN_ADD.exists()) {
+                    restrictedDelete(EXISTING_IDENTICAL_FILE_IN_ADD);
+                }
+            } else {  // File content is not identical, add it into stage area.
+                File STAGE_FILE = join(ADD_DIR, fileName);
+                try {
+                    STAGE_FILE.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                writeContents(STAGE_FILE, blobId);
+            }
+        } else {  // No such file in head commit, add into stage area.
+            File STAGE_FILE = join(ADD_DIR, fileName);
+            try {
+                STAGE_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeContents(STAGE_FILE, blobId);
+        }
+
+        // Check if it is in remove area. If so, delete it.
+        File REMOVE_FILE_WITH_ID = join(REMOVE_DIR, fileName);
+        if (REMOVE_FILE_WITH_ID.exists()) {
+            restrictedDelete(REMOVE_FILE_WITH_ID);
+        }
+    }
+
+    private static Commit getHeadCommit() {
+        String headCommitId = Utils.readContentsAsString(Repository.HEAD_FILE);
+        return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
     }
 }

@@ -41,7 +41,7 @@ public class Commit implements Serializable {
     /** Parent of this Commit. */
     private final String parent;
     /** Map of tracked files (filename and blob ID). */
-    private final Map<String, String> trackedFiles;
+    private final Map<String, String> trackedFiles;     // Map<FileName, blobId>
 
     /** Constructor of the initial commit. */
     public Commit(String message) {
@@ -76,5 +76,9 @@ public class Commit implements Serializable {
     public void save() {
         File commitFile = Utils.join(Repository.COMMITS_DIR, this.id);
         writeObject(commitFile, this);
+    }
+
+    public Map<String, String> getTrackedFiles() {
+        return this.trackedFiles;
     }
 }
