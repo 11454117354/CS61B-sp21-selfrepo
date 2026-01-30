@@ -48,11 +48,14 @@
 通过将对象写入存储中实现：
 ````
 .gitlet/
-├─ objects/
-│   ├─ commits/
-│   └─ blobs/
-├─ staging/
-HEAD
-CURRENT_BRANCH
+├── HEAD
+├── objects/
+│   ├── commits/
+│   └── blobs/
+├── refs/
+│   └── heads/
+├── staging/
+│   ├── add/
+│   └── remove/
 ````
 Objects使用Java serialization写入存储。

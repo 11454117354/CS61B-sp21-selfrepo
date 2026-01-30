@@ -1,5 +1,6 @@
 package gitlet;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -13,7 +14,7 @@ import java.util.Map;
  *
  *  @author Chen
  */
-public class Commit {
+public class Commit implements Serializable {
 
     /** Set the time format. */
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
