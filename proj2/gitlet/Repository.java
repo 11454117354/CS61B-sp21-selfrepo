@@ -189,7 +189,6 @@ public class Repository {
                     newTrackedFiles.remove(f.getName());
                 }
             }
-            for (File f : REMOVE_DIR.listFiles()) restrictedDelete(f);
         }
         ////  Create the new commit
         Commit thisCommit = new Commit(message, parent, newTrackedFiles);
@@ -217,7 +216,9 @@ public class Repository {
         if (addedFiles != null) {
             for (File f : addedFiles) {
                 if (f.getName().equals(fileName)) {
-                    restrictedDelete(f);
+                    if (!f.delete()) {
+                        throw new RuntimeException("Failed to delete staging file: " + f.getPath());
+                    }
                     addContainsFile = true;
                     break;
                 }
@@ -235,6 +236,12 @@ public class Repository {
                 throw new RuntimeException(e);
             }
             writeContents(REMOVE_FILE, headCommit.getTrackedFiles().get(fileName));
+
+            /// Delete it if exists in working directory
+            File DELETE_FILE_IN_WORKING_DIR = join(CWD, fileName);
+            if (DELETE_FILE_IN_WORKING_DIR.exists()) {
+                DELETE_FILE_IN_WORKING_DIR.delete();
+            }
         }
 
         /// Failure cases
