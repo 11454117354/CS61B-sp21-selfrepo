@@ -39,6 +39,8 @@ public class Commit implements Serializable {
     private final String id;
     /** Parent of this Commit. */
     private final String parent;
+    /** Second parent of this Commit. */
+    private final String secondParent;
     /** Map of tracked files (filename and blob ID). */
     private final Map<String, String> trackedFiles;     // Map<FileName, blobId>
 
@@ -50,14 +52,16 @@ public class Commit implements Serializable {
         this.timestamp = Instant.EPOCH.atZone(ZoneOffset.UTC)
                 .format(TIMESTAMP_FORMATTER);
         this.id = generateID();
+        this.secondParent = null;
     }
 
     /** Constructor of ordinary commit. */
-    public Commit(String message, String parent, Map<String, String> trackedFiles) {
+    public Commit(String message, String parent, String secondParent, Map<String, String> trackedFiles) {
         this.message = message;
         this.parent = parent;
         this.trackedFiles = new HashMap<>(trackedFiles);
         this.timestamp = ZonedDateTime.now().format(TIMESTAMP_FORMATTER);
+        this.secondParent = secondParent;
 
         this.id = generateID();
     }
@@ -80,5 +84,21 @@ public class Commit implements Serializable {
 
     public Map<String, String> getTrackedFiles() {
         return this.trackedFiles;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public String getParent() {
+        return this.parent;
+    }
+
+    public String getSecondParent() {
+        return this.secondParent;
+    }
+
+    public String getTimestamp() {
+        return this.timestamp;
     }
 }

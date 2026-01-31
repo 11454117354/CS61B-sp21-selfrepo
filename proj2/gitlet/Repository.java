@@ -191,7 +191,7 @@ public class Repository {
             }
         }
         ////  Create the new commit
-        Commit thisCommit = new Commit(message, parent, newTrackedFiles);
+        Commit thisCommit = new Commit(message, parent, null, newTrackedFiles);
 
         /// Write this commit into persistence system.
         thisCommit.save();
@@ -249,6 +249,13 @@ public class Repository {
             System.out.println("No reason to remove the file.");
             System.exit(0);
         }
+    }
+
+    /**
+     *
+     */
+    public static void log() {
+
     }
 
     /** Get the head commit by getting HEAD id in persistence. */
