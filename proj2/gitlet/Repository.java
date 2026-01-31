@@ -203,6 +203,47 @@ public class Repository {
         clearStaging();
     }
 
+    /**
+     * 1. Unstage the file in staging area if it is in (but do not delete it);
+     * 2. Remove the file from the working directory (if still exists) and move it
+     *    to remove area, when it is tracked by head commit.
+     *
+     * @param fileName The file to remove
+     */
+    public static void rm(String fileName) {
+        /// Situation 1
+        File[] addedFiles = ADD_DIR.listFiles();
+        boolean addContainsFile = false;
+        if (addedFiles != null) {
+            for (File f : addedFiles) {
+                if (f.getName().equals(fileName)) {
+                    restrictedDelete(f);
+                    addContainsFile = true;
+                    break;
+                }
+            }
+        }
+
+        /// Situation 2
+        Commit headCommit = getHeadCommit();
+        boolean headContainsFile = headCommit.getTrackedFiles().containsKey(fileName);
+        if (headContainsFile) {
+            File REMOVE_FILE = join(REMOVE_DIR, fileName);
+            try {
+                REMOVE_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeContents(REMOVE_FILE, headCommit.getTrackedFiles().get(fileName));
+        }
+
+        /// Failure cases
+        if ((!addContainsFile) && (!headContainsFile)) {
+            System.out.println("No reason to remove the file.");
+            System.exit(0);
+        }
+    }
+
     /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
