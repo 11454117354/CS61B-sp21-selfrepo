@@ -59,11 +59,11 @@ public class Repository {
         ADD_DIR.mkdir();
         REMOVE_DIR.mkdir();
 
-        // Create initial commit, and serialize it.
+        /// Create initial commit, and serialize it.
         Commit initialCommit = new Commit("initial commit");
         initialCommit.save();
 
-        // Write initial commit id into master pointer.
+        /// Write initial commit id into master pointer.
         String id = initialCommit.getId();
         try {
             MASTER_FILE.createNewFile();
@@ -72,7 +72,7 @@ public class Repository {
         }
         writeContents(MASTER_FILE, id);
 
-        // Set HEAD pointer (point to master)
+        /// Set HEAD pointer (point to master)
         try {
             HEAD_FILE.createNewFile();
         } catch (IOException e) {
@@ -91,16 +91,16 @@ public class Repository {
     public static void add(String fileName) {
         final File ADD_FILE = join(CWD, fileName);
 
-        // Check if the file exists.
+        /// Check if the file exists.
         if (!ADD_FILE.exists()) {
             System.out.println("File does not exist.");
             System.exit(0);
         }
 
-        // Generate the SHA-1 hash.
+        /// Generate the SHA-1 hash.
         String blobId = Utils.sha1((Object) readContents(ADD_FILE));
 
-        // Form the blob file and fill in the content
+        /// Form the blob file and fill in the content
         final File BLOB_FILE = join(BLOBS_DIR, blobId);
         if (!BLOB_FILE.exists()) {
             try {
@@ -111,19 +111,19 @@ public class Repository {
             writeContents(BLOB_FILE, readContentsAsString(ADD_FILE));
         }
 
-        // Check if current head commit is in track of this file.
-        // TODO: After finishing commit method, come back and check if this part is right.
+        /// Check if current head commit is in track of this file.
+        /// TODO: After finishing commit method, come back and check if this part is right.
         Commit headCommit = getHeadCommit();
         if (headCommit.getTrackedFiles().containsKey(fileName)) {
-            String headBlobId = headCommit.getTrackedFiles().get(fileName); // The hash of the existing old file.
+            String headBlobId = headCommit.getTrackedFiles().get(fileName); /// The hash of the existing old file.
 
-            // If the added file is identical to that tracked by head commit, do not add it into stage area.
+            /// If the added file is identical to that tracked by head commit, do not add it into stage area.
             if (headBlobId.equals(blobId)) {
                 File EXISTING_IDENTICAL_FILE_IN_ADD = join(ADD_DIR, fileName);
                 if (EXISTING_IDENTICAL_FILE_IN_ADD.exists()) {
                     restrictedDelete(EXISTING_IDENTICAL_FILE_IN_ADD);
                 }
-            } else {  // File content is not identical, add it into stage area.
+            } else {  /// File content is not identical, add it into stage area.
                 File STAGE_FILE = join(ADD_DIR, fileName);
                 try {
                     STAGE_FILE.createNewFile();
@@ -132,7 +132,7 @@ public class Repository {
                 }
                 writeContents(STAGE_FILE, blobId);
             }
-        } else {  // No such file in head commit, add into stage area.
+        } else {  /// No such file in head commit, add into stage area.
             File STAGE_FILE = join(ADD_DIR, fileName);
             try {
                 STAGE_FILE.createNewFile();
@@ -142,7 +142,7 @@ public class Repository {
             writeContents(STAGE_FILE, blobId);
         }
 
-        // Check if it is in remove area. If so, delete it.
+        /// Check if it is in remove area. If so, delete it.
         File REMOVE_FILE_WITH_ID = join(REMOVE_DIR, fileName);
         if (REMOVE_FILE_WITH_ID.exists()) {
             restrictedDelete(REMOVE_FILE_WITH_ID);
@@ -156,16 +156,17 @@ public class Repository {
      * @param message Message of this commit
      */
     public static void commit(String message) {
-        // Check if the message is blank.
+        /// Check if the message is blank.
         if (Objects.equals(message, "")) {
             System.out.println("Please enter a commit message.");
             System.exit(0);
         }
 
-        // Create a new commit.
+        /// Create a new commit.
         String parent = readContentsAsString(HEAD_FILE);
         Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
         File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
+        /// Add files to trackFiles map.
         if ((addedFiles == null || addedFiles.length == 0)
                 && (removedFiles == null || removedFiles.length == 0)) {
             System.out.println("No changes added to the commit.");
@@ -175,27 +176,31 @@ public class Repository {
             for (File f : addedFiles) {
                 if (f.isFile()) {
                     String name = f.getName();
-                    String content = readContentsAsString(f);
-                    newTrackedFiles.put(name, content);
+                    String blobId = readContentsAsString(f);
+                    newTrackedFiles.put(name, blobId);
                 }
             }
-            for (File f : ADD_DIR.listFiles()) restrictedDelete(f);
         }
+        /// TODO: Test this part of function after rm is formed.
+        /// Remove files in trackFiles map.
         if (removedFiles != null) {
             for (File f : removedFiles) {
-                if (f.isFile() && newTrackedFiles.containsKey(f.getName())) {
+                if (f.isFile()) {
                     newTrackedFiles.remove(f.getName());
                 }
             }
             for (File f : REMOVE_DIR.listFiles()) restrictedDelete(f);
         }
+        ////  Create the new commit
         Commit thisCommit = new Commit(message, parent, newTrackedFiles);
 
-        // Write this commit into persistence system.
+        /// Write this commit into persistence system.
         thisCommit.save();
         String currentBranch = readContentsAsString(HEAD_FILE);
         File branchRef = join(HEADS_DIR, currentBranch);
         writeContents(branchRef, thisCommit.getId());
+
+        clearStaging();
     }
 
     /** Get the head commit by getting HEAD id in persistence. */
@@ -203,5 +208,30 @@ public class Repository {
         String branch = readContentsAsString(HEAD_FILE);
         String headCommitId = readContentsAsString(join(HEADS_DIR, branch));
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
+    }
+
+    /** Clear the files in staging area. */
+    private static void clearStaging() {
+        deleteChildren(ADD_DIR);
+        deleteChildren(REMOVE_DIR);
+    }
+
+    /** Delete children files and directories recursively. */
+    private static void deleteChildren(File dir) {
+        if (dir == null || !dir.exists() || !dir.isDirectory()) {
+            return;
+        }
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File f : files) {
+            if (f.isDirectory()) {
+                deleteChildren(f);
+            }
+            if (!f.delete()) {
+                throw new RuntimeException("Failed to delete staging file: " + f.getPath());
+            }
+        }
     }
 }

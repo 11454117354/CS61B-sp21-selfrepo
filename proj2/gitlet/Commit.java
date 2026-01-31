@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import static gitlet.Utils.join;
 import static gitlet.Utils.writeObject;
 
 /** Represents a gitlet commit object.
