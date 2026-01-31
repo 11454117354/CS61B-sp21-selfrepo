@@ -2,6 +2,9 @@ package gitlet;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 import static gitlet.Utils.*;
 
@@ -78,9 +81,11 @@ public class Repository {
         writeContents(HEAD_FILE, id);
     }
 
-    /** Add ONE file into the staging area.
+    /**
+     * Add ONE file into the staging area.
      * Specifically form the blob file in blob folder, check if it already exists in the staging area,
      * and delete it if it's in remove area.
+     *
      * @param fileName The file to add
      */
     public static void add(String fileName) {
@@ -144,9 +149,49 @@ public class Repository {
         }
     }
 
-
+    /**
+     * Saves a snapshot of tracked files in the current commit and staging area
+     * so they can be restored at a later time, creating a new commit.
+     *
+     * @param message Message of this commit
+     */
     public static void commit(String message) {
+        // Check if the message is blank.
+        if (Objects.equals(message, "")) {
+            System.out.println("Please enter a commit message.");
+            System.exit(0);
+        }
 
+        // Create a new commit.
+        String parent = readContentsAsString(HEAD_FILE);
+        Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
+        File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
+        if (addedFiles == null && removedFiles == null) {
+            System.out.println("No changes added to the commit.");
+            System.exit(0);
+        }
+        if (addedFiles != null) {
+            for (File f : addedFiles) {
+                if (f.isFile()) {
+                    String name = f.getName();
+                    String content = readContentsAsString(f);
+                    newTrackedFiles.put(name, content);
+                }
+            }
+        }
+        if (removedFiles != null) {
+            for (File f : removedFiles) {
+                if (f.isFile() && newTrackedFiles.containsKey(f.getName())) {
+                    newTrackedFiles.remove(f.getName());
+                }
+            }
+        }
+        Commit thisCommit = new Commit(message, parent, newTrackedFiles);
+
+        // Write this commit into persistence system.
+        thisCommit.save();
+        writeContents(HEAD_FILE, thisCommit.getId());
+        writeContents(MASTER_FILE, thisCommit.getId());
     }
 
     /** Get the head commit by getting HEAD id in persistence. */

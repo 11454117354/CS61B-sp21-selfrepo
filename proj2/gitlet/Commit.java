@@ -73,6 +73,7 @@ public class Commit implements Serializable {
         return this.id;
     }
 
+    /** Write the commit into COMMIT_DIR. */
     public void save() {
         File commitFile = Utils.join(Repository.COMMITS_DIR, this.id);
         writeObject(commitFile, this);
