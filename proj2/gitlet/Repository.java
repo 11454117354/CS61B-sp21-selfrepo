@@ -163,7 +163,8 @@ public class Repository {
         }
 
         /// Create a new commit.
-        String parent = readContentsAsString(HEAD_FILE);
+        String currentBranch = readContentsAsString(HEAD_FILE);
+        String parent = readContentsAsString(join(HEADS_DIR, currentBranch));
         Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
         File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
         /// Add files to trackFiles map.
@@ -195,7 +196,6 @@ public class Repository {
 
         /// Write this commit into persistence system.
         thisCommit.save();
-        String currentBranch = readContentsAsString(HEAD_FILE);
         File branchRef = join(HEADS_DIR, currentBranch);
         writeContents(branchRef, thisCommit.getId());
 
@@ -257,7 +257,7 @@ public class Repository {
      */
     public static void log() {
         Commit currentCommit = getHeadCommit();
-        while (currentCommit.getParent() != null) {
+        while (true) {
             System.out.println("===");
             System.out.println("commit " + currentCommit.getId());
             if (currentCommit.getSecondParent() != null) {
@@ -267,6 +267,9 @@ public class Repository {
             System.out.println("Date" + currentCommit.getTimestamp());
             System.out.println(currentCommit.getMessage());
             System.out.println();
+            if (currentCommit.getParent() == null) {
+                break;
+            }
             currentCommit = getCommit(currentCommit.getParent());
         }
     }

@@ -3,6 +3,7 @@ package gitlet;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,8 +50,8 @@ public class Commit implements Serializable {
         this.message = message;
         this.parent = null;
         this.trackedFiles = new HashMap<>();
-        this.timestamp = Instant.EPOCH.atZone(ZoneOffset.UTC)
-                .format(TIMESTAMP_FORMATTER);
+        this.timestamp = ZonedDateTime.ofInstant
+                (Instant.EPOCH, ZoneId.systemDefault()).format(TIMESTAMP_FORMATTER);
         this.id = generateID();
         this.secondParent = null;
     }

@@ -38,6 +38,7 @@ public class Main {
                 checkInit();
                 validateNumArgs(args, 1);
                 Repository.log();
+                break;
 
             default:
                 System.out.println("No command with that name exists.");
