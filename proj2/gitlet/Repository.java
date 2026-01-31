@@ -78,7 +78,7 @@ public class Repository {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        writeContents(HEAD_FILE, id);
+        writeContents(HEAD_FILE, "master");
     }
 
     /**
@@ -177,31 +177,31 @@ public class Repository {
                     String name = f.getName();
                     String content = readContentsAsString(f);
                     newTrackedFiles.put(name, content);
-                    restrictedDelete(f);
                 }
             }
+            for (File f : ADD_DIR.listFiles()) restrictedDelete(f);
         }
         if (removedFiles != null) {
             for (File f : removedFiles) {
                 if (f.isFile() && newTrackedFiles.containsKey(f.getName())) {
                     newTrackedFiles.remove(f.getName());
-                    restrictedDelete(f);
                 }
             }
+            for (File f : REMOVE_DIR.listFiles()) restrictedDelete(f);
         }
         Commit thisCommit = new Commit(message, parent, newTrackedFiles);
 
         // Write this commit into persistence system.
         thisCommit.save();
-        writeContents(HEAD_FILE, thisCommit.getId());
-        writeContents(MASTER_FILE, thisCommit.getId());
-
-        // Clear the staging area.
+        String currentBranch = readContentsAsString(HEAD_FILE);
+        File branchRef = join(HEADS_DIR, currentBranch);
+        writeContents(branchRef, thisCommit.getId());
     }
 
     /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
-        String headCommitId = Utils.readContentsAsString(Repository.HEAD_FILE);
+        String branch = readContentsAsString(HEAD_FILE);
+        String headCommitId = readContentsAsString(join(HEADS_DIR, branch));
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
     }
 }
