@@ -37,7 +37,10 @@ public class Repository {
     public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
 
 
-    /** TODO: javadoc here */
+    /**
+     * Initialize the persistence system and pointers for gitlet.
+     * A .gitlet folder will be generated, inside which has the persistence structure, as described in design document
+     */
     public static void init() {
         if (GITLET_DIR.exists()) {
             System.out.println("A Gitlet version-control system already exists in the current directory.");
@@ -75,6 +78,11 @@ public class Repository {
         writeContents(HEAD_FILE, id);
     }
 
+    /** Add ONE file into the staging area.
+     * Specifically form the blob file in blob folder, check if it already exists in the staging area,
+     * and delete it if it's in remove area.
+     * @param fileName The file to add
+     */
     public static void add(String fileName) {
         final File ADD_FILE = join(CWD, fileName);
 
@@ -136,6 +144,12 @@ public class Repository {
         }
     }
 
+
+    public static void commit(String message) {
+
+    }
+
+    /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
         String headCommitId = Utils.readContentsAsString(Repository.HEAD_FILE);
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);

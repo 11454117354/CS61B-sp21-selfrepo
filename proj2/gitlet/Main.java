@@ -20,11 +20,13 @@ public class Main {
                 Repository.init();
                 break;
             case "add":
-                // TODO: handle the `add [filename]` command
                 validateNumArgs(args, 2);
                 Repository.add(args[1]);
                 break;
-            // TODO: FILL THE REST IN
+            case "commit":
+                validateNumArgs(args, 2);
+                Repository.commit(args[1]);
+                break;
 
             default:
                 System.out.println("No command with that name exists.");
