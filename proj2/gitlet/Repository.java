@@ -166,7 +166,8 @@ public class Repository {
         String parent = readContentsAsString(HEAD_FILE);
         Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
         File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
-        if (addedFiles == null && removedFiles == null) {
+        if ((addedFiles == null || addedFiles.length == 0)
+                && (removedFiles == null || removedFiles.length == 0)) {
             System.out.println("No changes added to the commit.");
             System.exit(0);
         }
@@ -176,6 +177,7 @@ public class Repository {
                     String name = f.getName();
                     String content = readContentsAsString(f);
                     newTrackedFiles.put(name, content);
+                    restrictedDelete(f);
                 }
             }
         }
@@ -183,6 +185,7 @@ public class Repository {
             for (File f : removedFiles) {
                 if (f.isFile() && newTrackedFiles.containsKey(f.getName())) {
                     newTrackedFiles.remove(f.getName());
+                    restrictedDelete(f);
                 }
             }
         }
@@ -192,6 +195,8 @@ public class Repository {
         thisCommit.save();
         writeContents(HEAD_FILE, thisCommit.getId());
         writeContents(MASTER_FILE, thisCommit.getId());
+
+        // Clear the staging area.
     }
 
     /** Get the head commit by getting HEAD id in persistence. */
