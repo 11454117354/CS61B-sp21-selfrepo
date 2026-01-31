@@ -252,10 +252,23 @@ public class Repository {
     }
 
     /**
-     *
+     * Print out the commit information from the HEAD commit to init commit.
+     * If one commit has two parent, print out the info, and go along the first parent.
      */
     public static void log() {
-
+        Commit currentCommit = getHeadCommit();
+        while (currentCommit.getParent() != null) {
+            System.out.println("===");
+            System.out.println("commit " + currentCommit.getId());
+            if (currentCommit.getSecondParent() != null) {
+                System.out.println("Merge: " + currentCommit.getParent().substring(0, 7)
+                        + currentCommit.getSecondParent().substring(0, 7));
+            }
+            System.out.println("Date" + currentCommit.getTimestamp());
+            System.out.println(currentCommit.getMessage());
+            System.out.println();
+            currentCommit = getCommit(currentCommit.getParent());
+        }
     }
 
     /** Get the head commit by getting HEAD id in persistence. */
@@ -263,6 +276,11 @@ public class Repository {
         String branch = readContentsAsString(HEAD_FILE);
         String headCommitId = readContentsAsString(join(HEADS_DIR, branch));
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
+    }
+
+    /** Get the commit by its id. */
+    private static Commit getCommit(String id) {
+        return readObject(join(COMMITS_DIR, id), Commit.class);
     }
 
     /** Clear the files in staging area. */
