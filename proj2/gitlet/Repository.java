@@ -3,6 +3,7 @@ package gitlet;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -258,19 +259,25 @@ public class Repository {
     public static void log() {
         Commit currentCommit = getHeadCommit();
         while (true) {
-            System.out.println("===");
-            System.out.println("commit " + currentCommit.getId());
-            if (currentCommit.getSecondParent() != null) {
-                System.out.println("Merge: " + currentCommit.getParent().substring(0, 7)
-                        + currentCommit.getSecondParent().substring(0, 7));
-            }
-            System.out.println("Date" + currentCommit.getTimestamp());
-            System.out.println(currentCommit.getMessage());
-            System.out.println();
+            printLog(currentCommit);
             if (currentCommit.getParent() == null) {
                 break;
             }
             currentCommit = getCommit(currentCommit.getParent());
+        }
+    }
+
+    /**
+     * Print out all the commits in repository, regardless of branches they're in.
+     */
+    public static void globalLog() {
+        List<String> commitIds = plainFilenamesIn(COMMITS_DIR);
+        if (commitIds == null) {
+            System.exit(0);
+        }
+        for (String commitId : commitIds) {
+            Commit currentCommit = getCommit(commitId);
+            printLog(currentCommit);
         }
     }
 
@@ -284,6 +291,19 @@ public class Repository {
     /** Get the commit by its id. */
     private static Commit getCommit(String id) {
         return readObject(join(COMMITS_DIR, id), Commit.class);
+    }
+
+    /** Print out the log information of one commit. */
+    private static void printLog(Commit currentCommit) {
+        System.out.println("===");
+        System.out.println("commit " + currentCommit.getId());
+        if (currentCommit.getSecondParent() != null) {
+            System.out.println("Merge: " + currentCommit.getParent().substring(0, 7)
+                    + currentCommit.getSecondParent().substring(0, 7));
+        }
+        System.out.println("Date" + currentCommit.getTimestamp());
+        System.out.println(currentCommit.getMessage());
+        System.out.println();
     }
 
     /** Clear the files in staging area. */
