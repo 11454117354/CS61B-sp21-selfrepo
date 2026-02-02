@@ -503,6 +503,7 @@ public class Repository {
      *
      * @param branchName Name of branch to check out
      */
+    /// TODO: Test this method after branch is finished.
     public static void checkOutBranch(String branchName) {
         List<String> branched = plainFilenamesIn(HEADS_DIR);
         assert branched != null;
@@ -543,6 +544,38 @@ public class Repository {
                 }
             }
             writeContents(FILE_CWD, (Object) readContents(join(BLOBS_DIR, trackedFilesBranch.get(fileName))));
+        }
+
+        /// Reset HEAD branch.
+        writeContents(HEAD_FILE, branchName);
+
+        /// Delete files that are not in the new commit.
+        if (filesInCWD != null) {
+            for (String fileInCWD : filesInCWD) {
+                if (headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                restrictedDelete(fileInCWD);
+            }
+        }
+    }
+
+    /**
+     * Create a new branch with the given name.This is actually a pointer pointing at HEAD.
+     * Note that HEAD shouldn't change.
+     *
+     * @param branchName Name of the new branch
+     */
+    public static void branch(String branchName) {
+        File branchFile = join(HEADS_DIR, branchName);
+        if (branchFile.exists()) {
+            System.out.println("A branch with that name already exists.");
+            System.exit(0);
+        }
+        try {
+            branchFile.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

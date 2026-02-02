@@ -69,6 +69,11 @@ public class Main {
                     Repository.checkOutBranch(args[1]);
                 }
                 break;
+            case "branch":
+                checkInit();
+                validateNumArgs(args, 2);
+                Repository.branch(args[1]);
+                break;
 
             default:
                 System.out.println("No command with that name exists.");
