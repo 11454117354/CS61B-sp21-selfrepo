@@ -546,19 +546,30 @@ public class Repository {
         }
     }
 
-    /** Get the head commit by getting HEAD id in persistence. */
+    /**
+     * Get the head commit by getting HEAD id in persistence.
+     */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
         String headCommitId = readContentsAsString(join(HEADS_DIR, branch));
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
     }
 
-    /** Get the commit by its id. */
+    /**
+     * Get the commit by its id.
+     *
+     * @param id The id of the commit
+     * @return The Commit corresponding to this id
+     */
     private static Commit getCommit(String id) {
         return readObject(join(COMMITS_DIR, id), Commit.class);
     }
 
-    /** Print out the log information of one commit. */
+    /**
+     * Print out the log information of one commit.
+     *
+     * @param currentCommit The commit to print log
+     */
     private static void printLog(Commit currentCommit) {
         System.out.println("===");
         System.out.println("commit " + currentCommit.getId());
@@ -571,13 +582,19 @@ public class Repository {
         System.out.println();
     }
 
-    /** Clear the files in staging area. */
+    /**
+     * Clear the files in staging area.
+     */
     private static void clearStaging() {
         deleteChildren(ADD_DIR);
         deleteChildren(REMOVE_DIR);
     }
 
-    /** Delete children files and directories recursively. */
+    /**
+     * Delete children files and directories recursively.
+     *
+     * @param dir The directory to delete children
+     */
     private static void deleteChildren(File dir) {
         if (dir == null || !dir.exists() || !dir.isDirectory()) {
             return;
@@ -596,7 +613,12 @@ public class Repository {
         }
     }
 
-    /** Generate SHA-1 hash for a file. */
+    /**
+     * Generate SHA-1 hash for a file.
+     *
+     * @param file The file to generate hash
+     * @return The hash of the file
+     */
     private static String generateHash(File file) {
         return Utils.sha1((Object) readContents(file));
     }
