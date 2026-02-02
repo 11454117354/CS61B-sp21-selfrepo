@@ -110,7 +110,6 @@ public class Repository {
         }
 
         /// Check if current head commit is in track of this file.
-        /// TODO: After finishing commit method, come back and check if this part is right.
         Commit headCommit = getHeadCommit();
         if (headCommit.getTrackedFiles().containsKey(fileName)) {
             String headBlobId = headCommit.getTrackedFiles().get(fileName); /// The hash of the existing old file.
@@ -180,7 +179,6 @@ public class Repository {
                 }
             }
         }
-        /// TODO: Test this part of function after rm is formed.
         /// Remove files in trackFiles map.
         if (removedFiles != null) {
             for (File f : removedFiles) {
@@ -445,6 +443,13 @@ public class Repository {
             System.exit(0);
         }
         File CHECKOUT_FILE = join(CWD, fileName);
+        if (!CHECKOUT_FILE.exists()) {
+            try {
+                CHECKOUT_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         String fileHash = trackedFiles.get(fileName);
         writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
     }
@@ -478,6 +483,13 @@ public class Repository {
                 System.exit(0);
             }
             File CHECKOUT_FILE = join(CWD, fileName);
+            if (!CHECKOUT_FILE.exists()) {
+                try {
+                    CHECKOUT_FILE.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
             String fileHash = trackedFiles.get(fileName);
             writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
         }
@@ -492,7 +504,46 @@ public class Repository {
      * @param branchName Name of branch to check out
      */
     public static void checkOutBranch(String branchName) {
+        List<String> branched = plainFilenamesIn(HEADS_DIR);
+        assert branched != null;
+        if (!branched.contains(branchName)) {
+            System.out.println("No such branch exists.");
+            System.exit(0);
+        }
+        if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))){
+            System.out.println("No need to checkout the current branch.");
+            System.exit(0);
+        }
 
+        /// Find if there are untracked files.
+        List<String> filesInCWD = plainFilenamesIn(CWD);
+        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
+        if (filesInCWD != null) {
+            for (String fileInCWD : filesInCWD) {
+                if (headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                System.out.println("There is an untracked file in the way; " +
+                        "delete it, or add and commit it first.");
+                System.exit(0);
+            }
+        }
+
+        /// Change files.
+        Commit branchHeadCommit = getCommit(readContentsAsString(
+                join(BLOBS_DIR, branchName)));
+        Map<String, String> trackedFilesBranch = branchHeadCommit.getTrackedFiles();
+        for (String fileName : trackedFilesBranch.keySet()) {
+            File FILE_CWD = join(CWD, fileName);
+            if (!FILE_CWD.exists()) {
+                try {
+                    FILE_CWD.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            writeContents(FILE_CWD, (Object) readContents(join(BLOBS_DIR, trackedFilesBranch.get(fileName))));
+        }
     }
 
     /** Get the head commit by getting HEAD id in persistence. */

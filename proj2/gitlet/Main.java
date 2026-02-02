@@ -58,13 +58,13 @@ public class Main {
                 break;
             case "checkout":
                 checkInit();
-                if (Objects.equals(args[1], "--")) {
+                if (Objects.equals(args[1], "--")) {        /// -- [file name]
                     validateNumArgs(args, 3);
                     Repository.checkOutFile(args[2]);
-                } else if (Objects.equals(args[2], "--")) {
+                } else if (Objects.equals(args[2], "--")) { /// [commit id] -- [file name]
                     validateNumArgs(args, 4);
                     Repository.checkOutCommit(args[1], args[3]);
-                } else {
+                } else {                                       /// [branch name]
                     validateNumArgs(args, 2);
                     Repository.checkOutBranch(args[1]);
                 }
