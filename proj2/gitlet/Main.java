@@ -58,15 +58,18 @@ public class Main {
                 break;
             case "checkout":
                 checkInit();
-                if (Objects.equals(args[1], "--")) {        /// -- [file name]
-                    validateNumArgs(args, 3);
-                    Repository.checkOutFile(args[2]);
-                } else if (Objects.equals(args[2], "--")) { /// [commit id] -- [file name]
-                    validateNumArgs(args, 4);
-                    Repository.checkOutCommit(args[1], args[3]);
-                } else {                                       /// [branch name]
-                    validateNumArgs(args, 2);
+                if (args.length == 2) {         /// [branch name]
                     Repository.checkOutBranch(args[1]);
+                } else if (args.length == 3) {  /// -- [file name]
+                    if (!Objects.equals(args[1], "--")) {
+                        throwError();
+                    }
+                    Repository.checkOutFile(args[2]);
+                } else if (args.length == 4) {  /// [commit id] -- [file name]
+                    if (!Objects.equals(args[2], "--")) {
+                        throwError();
+                    }
+                    Repository.checkOutCommit(args[1], args[3]);
                 }
                 break;
             case "branch":
@@ -101,8 +104,15 @@ public class Main {
      */
     private static void checkInit() {
         if (!Repository.GITLET_DIR.exists()) {
-            System.out.println("Not in an initialized Gitlet directory.");
-            System.exit(0);
+            throwError();
         }
+    }
+
+    /**
+     * Print out error message and exit program.
+     */
+    private static void throwError() {
+        System.out.println("Not in an initialized Gitlet directory.");
+        System.exit(0);
     }
 }

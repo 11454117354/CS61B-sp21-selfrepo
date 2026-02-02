@@ -503,7 +503,6 @@ public class Repository {
      *
      * @param branchName Name of branch to check out
      */
-    /// TODO: Test this method after branch is finished.
     public static void checkOutBranch(String branchName) {
         List<String> branched = plainFilenamesIn(HEADS_DIR);
         assert branched != null;
@@ -532,7 +531,7 @@ public class Repository {
 
         /// Change files.
         Commit branchHeadCommit = getCommit(readContentsAsString(
-                join(BLOBS_DIR, branchName)));
+                join(HEADS_DIR, branchName)));
         Map<String, String> trackedFilesBranch = branchHeadCommit.getTrackedFiles();
         for (String fileName : trackedFilesBranch.keySet()) {
             File FILE_CWD = join(CWD, fileName);
@@ -577,6 +576,7 @@ public class Repository {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        writeContents(branchFile, getHeadCommit().getId());
     }
 
     /**
