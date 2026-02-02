@@ -1,5 +1,7 @@
 package gitlet;
 
+import java.util.Objects;
+
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author Chen
  */
@@ -46,13 +48,26 @@ public class Main {
                 break;
             case "find":
                 checkInit();
-                validateNumArgs(args, 2 );
+                validateNumArgs(args, 2);
                 Repository.find(args[1]);
                 break;
             case "status":
                 checkInit();
                 validateNumArgs(args, 1);
                 Repository.status();
+                break;
+            case "checkout":
+                checkInit();
+                if (Objects.equals(args[1], "--")) {
+                    validateNumArgs(args, 3);
+                    Repository.checkOutFile(args[2]);
+                } else if (Objects.equals(args[2], "--")) {
+                    validateNumArgs(args, 4);
+                    Repository.checkOutCommit(args[1], args[3]);
+                } else {
+                    validateNumArgs(args, 2);
+                    Repository.checkOutBranch(args[1]);
+                }
                 break;
 
             default:

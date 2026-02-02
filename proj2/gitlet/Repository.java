@@ -432,6 +432,44 @@ public class Repository {
         System.out.println();
     }
 
+    /**
+     * Take the file in head commit, replace the one in working directory.
+     *
+     * @param fileName The file to check out
+     */
+    public static void checkOutFile(String fileName) {
+        Commit headCommit = getHeadCommit();
+        Map<String, String> trackedFiles = headCommit.getTrackedFiles();
+        if (!trackedFiles.containsKey(fileName)) {
+            System.out.println("File does not exist in that commit.");
+        }
+        File CHECKOUT_FILE = join(CWD, fileName);
+        String fileHash = trackedFiles.get(fileName);
+        writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
+    }
+
+    /**
+     * Take the version of file in the given commit, replace the one in working directory.
+     *
+     * @param commitId The commit version to take
+     * @param fileName The file to check out
+     */
+    public static void checkOutCommit(String commitId, String fileName) {
+
+    }
+
+    /**
+     * Take all files in the head commit of the new branch, put them in working directory,
+     * overwrite if one exists.
+     * Reset the HEAD branch.
+     * Delete all files that are not in checkout branch.
+     *
+     * @param branchName Name of branch to check out
+     */
+    public static void checkOutBranch(String branchName) {
+
+    }
+
     /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
