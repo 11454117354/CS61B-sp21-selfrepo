@@ -281,6 +281,30 @@ public class Repository {
         }
     }
 
+    /**
+     * Print out the ids of all commits that have the given commit message, one per line.
+     *
+     * @param message The message to find
+     */
+    public static void find(String message) {
+        List<String> commitIds = plainFilenamesIn(COMMITS_DIR);
+        if (commitIds == null) {
+            System.out.println("Found no commit with that message.");
+            System.exit(0);
+        }
+        boolean foundCommit = false;
+        for (String commitId : commitIds) {
+            Commit currentCommit = getCommit(commitId);
+            if (Objects.equals(message, currentCommit.getMessage())) {
+                System.out.println(commitId);
+                foundCommit = true;
+            }
+        }
+        if (!foundCommit) {
+            System.out.println("Found no commit with that message.");
+        }
+    }
+
     /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
