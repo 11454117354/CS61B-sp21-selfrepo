@@ -566,7 +566,7 @@ public class Repository {
             System.out.println("Merge: " + currentCommit.getParent().substring(0, 7)
                     + currentCommit.getSecondParent().substring(0, 7));
         }
-        System.out.println("Date" + currentCommit.getTimestamp());
+        System.out.println("Date: " + currentCommit.getTimestamp());
         System.out.println(currentCommit.getMessage());
         System.out.println();
     }
