@@ -580,6 +580,25 @@ public class Repository {
     }
 
     /**
+     * Deletes a branch with the given name.
+     * That's to say only deletes the branch pointer, but do not delete those commits.
+     *
+     * @param branchName Name of branch to delete
+     */
+    public static void rmBranch(String branchName) {
+        File branchToDelete = join(HEADS_DIR, branchName);
+        if (!branchToDelete.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))) {
+            System.out.println("Cannot remove the current branch.");
+            System.exit(0);
+        }
+        branchToDelete.delete();
+    }
+
+    /**
      * Get the head commit by getting HEAD id in persistence.
      */
     private static Commit getHeadCommit() {
