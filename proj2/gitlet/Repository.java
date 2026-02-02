@@ -442,6 +442,7 @@ public class Repository {
         Map<String, String> trackedFiles = headCommit.getTrackedFiles();
         if (!trackedFiles.containsKey(fileName)) {
             System.out.println("File does not exist in that commit.");
+            System.exit(0);
         }
         File CHECKOUT_FILE = join(CWD, fileName);
         String fileHash = trackedFiles.get(fileName);
@@ -451,11 +452,35 @@ public class Repository {
     /**
      * Take the version of file in the given commit, replace the one in working directory.
      *
-     * @param commitId The commit version to take
+     * @param prefix The commit version to take (allow user to input the first few digit of the id)
      * @param fileName The file to check out
      */
-    public static void checkOutCommit(String commitId, String fileName) {
-
+    public static void checkOutCommit(String prefix, String fileName) {
+        List<String> commitIds = plainFilenamesIn(COMMITS_DIR);
+        List<String> qualifiedIds = new ArrayList<>(2);
+        assert commitIds != null;
+        for (String commitId : commitIds) {
+            if (commitId.startsWith(prefix)) {
+                qualifiedIds.add(commitId);
+            }
+        }
+        if (qualifiedIds.isEmpty()) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        } else if (qualifiedIds.size() > 1) {
+            System.out.println("Prefix not unique.");
+            System.exit(0);
+        } else {
+            Commit destinedCommit = getCommit(qualifiedIds.get(0));
+            Map<String, String> trackedFiles = destinedCommit.getTrackedFiles();
+            if (!trackedFiles.containsKey(fileName)) {
+                System.out.println("File does not exist in that commit.");
+                System.exit(0);
+            }
+            File CHECKOUT_FILE = join(CWD, fileName);
+            String fileHash = trackedFiles.get(fileName);
+            writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
+        }
     }
 
     /**
