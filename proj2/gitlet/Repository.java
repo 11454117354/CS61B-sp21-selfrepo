@@ -143,7 +143,7 @@ public class Repository {
         /// Check if it is in remove area. If so, delete it.
         File REMOVE_FILE_WITH_ID = join(REMOVE_DIR, fileName);
         if (REMOVE_FILE_WITH_ID.exists()) {
-            restrictedDelete(REMOVE_FILE_WITH_ID);
+            REMOVE_FILE_WITH_ID.delete();
         }
     }
 
@@ -356,11 +356,12 @@ public class Repository {
                 }
             }
             File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
-            String currentHash = generateHash(FILE_IN_WORKING_DIRECTORY);
-            if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
-                printOutFiles.add(trackedFileName);
+            if (FILE_IN_WORKING_DIRECTORY.exists()) {
+                String currentHash = generateHash(FILE_IN_WORKING_DIRECTORY);
+                if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
+                    printOutFiles.add(trackedFileName + " (modified)");
+                }
             }
-
         }
         /// Get the file staged for addition, but with different contents than in the working directory;
         /// and get the file staged for addition, but deleted in the working directory.
@@ -368,11 +369,13 @@ public class Repository {
             for (String stagedFile : stagedFiles) {
                 File FILE_IN_WORKING_DIRECTORY = join(CWD, stagedFile);
                 if (!FILE_IN_WORKING_DIRECTORY.exists()) {
-                    printOutFiles.add(stagedFile);
+                    printOutFiles.add(stagedFile + " (deleted)");
                 }
                 String addHashOrigin = readContentsAsString(join(ADD_DIR, stagedFile));
-                if (!generateHash(FILE_IN_WORKING_DIRECTORY).equals(addHashOrigin)) {
-                    printOutFiles.add(stagedFile);
+                if (FILE_IN_WORKING_DIRECTORY.exists()) {
+                    if (!generateHash(FILE_IN_WORKING_DIRECTORY).equals(addHashOrigin)) {
+                        printOutFiles.add(stagedFile + " (modified)");
+                    }
                 }
             }
         }
@@ -386,7 +389,7 @@ public class Repository {
             }
             File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
             if (!FILE_IN_WORKING_DIRECTORY.exists()) {
-                printOutFiles.add(trackedFileName);
+                printOutFiles.add(trackedFileName + " (deleted)");
             }
         }
         /// Print out all those files.
