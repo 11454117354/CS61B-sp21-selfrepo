@@ -2,10 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -99,7 +96,7 @@ public class Repository {
         }
 
         /// Generate the SHA-1 hash.
-        String blobId = Utils.sha1((Object) readContents(ADD_FILE));
+        String blobId = generateHash(ADD_FILE);
 
         /// Form the blob file and fill in the content
         final File BLOB_FILE = join(BLOBS_DIR, blobId);
@@ -305,6 +302,133 @@ public class Repository {
         }
     }
 
+    /**
+     * Displays what branches currently exist, and marks the current branch with a *.
+     * Also displays what files have been staged for addition or removal.
+     */
+    public static void status() {
+        /// Print branches.
+        System.out.println("=== Branches ===");
+        List<String> branchNames = plainFilenamesIn(HEADS_DIR);
+        assert branchNames != null;
+        Collections.sort(branchNames);
+        for (String branchName : branchNames) {
+            String currentBranch = readContentsAsString(HEAD_FILE);
+            if (Objects.equals(branchName, currentBranch)) {
+                System.out.print("*");
+            }
+            System.out.println(branchName);
+        }
+        System.out.println();
+
+        /// Print staged files.
+        System.out.println("=== Staged Files ===");
+        List<String> stagedFiles = plainFilenamesIn(ADD_DIR);
+        if (stagedFiles != null) {
+            Collections.sort(stagedFiles);
+            for (String stagedFile : stagedFiles) {
+                System.out.println(stagedFile);
+            }
+        }
+        System.out.println();
+
+        /// Print removed files.
+        System.out.println("=== Removed Files ===");
+        List<String> removedFiles = plainFilenamesIn(REMOVE_DIR);
+        if (removedFiles != null) {
+            Collections.sort(removedFiles);
+            for (String removedFile : removedFiles) {
+                System.out.println(removedFile);
+            }
+        }
+        System.out.println();
+
+        /// Print modified but not staged files.
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        List<String> printOutFiles = new ArrayList<>(5);
+        /// Get the file tracked in the current commit, changed in the working directory, but not staged.
+        Commit headCommit = getHeadCommit();
+        Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
+        for (String trackedFileName : headTrackedFiles.keySet()) {
+            if (stagedFiles != null) {
+                if (stagedFiles.contains(trackedFileName)) {
+                    continue;
+                }
+            }
+            File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
+            String currentHash = generateHash(FILE_IN_WORKING_DIRECTORY);
+            if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
+                printOutFiles.add(trackedFileName);
+            }
+
+        }
+        /// Get the file staged for addition, but with different contents than in the working directory;
+        /// and get the file staged for addition, but deleted in the working directory.
+        if (stagedFiles != null) {
+            for (String stagedFile : stagedFiles) {
+                File FILE_IN_WORKING_DIRECTORY = join(CWD, stagedFile);
+                if (!FILE_IN_WORKING_DIRECTORY.exists()) {
+                    printOutFiles.add(stagedFile);
+                }
+                String addHashOrigin = readContentsAsString(join(ADD_DIR, stagedFile));
+                if (!generateHash(FILE_IN_WORKING_DIRECTORY).equals(addHashOrigin)) {
+                    printOutFiles.add(stagedFile);
+                }
+            }
+        }
+        /// Get the file Not staged for removal,
+        /// but tracked in the current commit and deleted from the working directory.
+        for (String trackedFileName : headTrackedFiles.keySet()) {
+            if (removedFiles != null) {
+                if (removedFiles.contains(trackedFileName)) {
+                    continue;
+                }
+            }
+            File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
+            if (!FILE_IN_WORKING_DIRECTORY.exists()) {
+                printOutFiles.add(trackedFileName);
+            }
+        }
+        /// Print out all those files.
+        Collections.sort(printOutFiles);
+        for (String printOutFile : printOutFiles) {
+            System.out.println(printOutFile);
+        }
+        System.out.println();
+
+        /// Print untracked files
+        System.out.println("=== Untracked Files ===");
+        List<String> printOutUntrackedFiles = new ArrayList<>(5);
+        List<String> filesInWorkingDirectory = plainFilenamesIn(CWD);
+        if (filesInWorkingDirectory != null) {
+            for (String fileInWorkingDirectory : filesInWorkingDirectory) {
+                if (headTrackedFiles.containsKey(fileInWorkingDirectory)) {
+                    continue;
+                }
+                if (stagedFiles != null) {
+                    if (stagedFiles.contains(fileInWorkingDirectory)) {
+                        continue;
+                    }
+                }
+                printOutUntrackedFiles.add(fileInWorkingDirectory);
+            }
+        }
+        if (removedFiles != null) {
+            for (String removedFile : removedFiles) {
+                if (filesInWorkingDirectory != null) {
+                    if (filesInWorkingDirectory.contains(removedFile)) {
+                        printOutUntrackedFiles.add(removedFile);
+                    }
+                }
+            }
+        }
+        Collections.sort(printOutUntrackedFiles);
+        for (String printOutUntrackedFile : printOutUntrackedFiles) {
+            System.out.println(printOutUntrackedFile);
+        }
+        System.out.println();
+    }
+
     /** Get the head commit by getting HEAD id in persistence. */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
@@ -353,5 +477,10 @@ public class Repository {
                 throw new RuntimeException("Failed to delete staging file: " + f.getPath());
             }
         }
+    }
+
+    /** Generate SHA-1 hash for a file. */
+    private static String generateHash(File file) {
+        return Utils.sha1((Object) readContents(file));
     }
 }
