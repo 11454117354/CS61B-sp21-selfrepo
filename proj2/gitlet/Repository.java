@@ -607,12 +607,14 @@ public class Repository {
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
         /// Situation 1.
-        if (splitPointCommit == givenBranchCommit) {
+        if (splitPointCommit != null
+                && Objects.equals(splitPointCommit.getId(), givenBranchCommit.getId())) {
             quit("Given branch is an ancestor of the current branch.");
         }
 
         /// Situation 2.
-        if (splitPointCommit == currentCommit) {
+        if (splitPointCommit != null
+                && Objects.equals(splitPointCommit.getId(), currentCommit.getId())) {
             checkOutBranch(branchName);
             quit("Current branch fast-forwarded.");
         }
