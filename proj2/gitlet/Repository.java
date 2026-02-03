@@ -574,7 +574,7 @@ public class Repository {
      * Situation 2(linear): Current branch's head commit is the split point. Checkout the given branch.
      * Both situation above don't make new commit.
      *
-     * @param branchName The branch to merge from
+     * @param branchName The given branch to merge from
      */
     public static void merge(String branchName) {
         /// Check if there are staged files uncommited.
@@ -591,6 +591,107 @@ public class Repository {
         /// Check if the given branch is the current branch.
         if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))) {
             quit("Cannot merge a branch with itself.");
+        }
+
+        /// Check if there are untracked files.
+        checkUntrackedFiles();
+
+        /// Get the split commit.
+        Commit currentCommit = getHeadCommit();
+        Commit givenBranchCommit =
+                getCommit(readContentsAsString(join(HEADS_DIR, branchName)));
+        Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
+
+        /// Situation 1.
+        if (splitPointCommit == givenBranchCommit) {
+            quit("Given branch is an ancestor of the current branch.");
+        }
+
+        /// Situation 2.
+        if (splitPointCommit == currentCommit) {
+            checkOutBranch(branchName);
+            quit("Current branch fast-forwarded.");
+        }
+
+        /// Non-special cases below.
+        Map<String, String> filesCurrentCommit = currentCommit.getTrackedFiles();
+        Map<String, String> filesGivenCommit = givenBranchCommit.getTrackedFiles();
+        Map<String, String> filesSplitCommit = splitPointCommit.getTrackedFiles();
+
+        for (String fileNameCurrentCommit : filesCurrentCommit.keySet()) {
+            if (filesGivenCommit.containsKey(fileNameCurrentCommit)
+                    && filesSplitCommit.containsKey(fileNameCurrentCommit)) {
+                File fileCWD = join(CWD, fileNameCurrentCommit);
+                String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
+                String givenFileHash = filesGivenCommit.get(fileNameCurrentCommit);
+                String splitFileHash = filesSplitCommit.get(fileNameCurrentCommit);
+
+                /// Files modified in the given branch but not modified in current branch
+                /// should be changed into the version in the given branch.
+                if (Objects.equals(currentFileHash, splitFileHash)
+                        && (!Objects.equals(givenFileHash, splitFileHash))) {
+                    File givenFileBlob = join(BLOBS_DIR, givenFileHash);
+                    writeContents(fileCWD, (Object) readContents(givenFileBlob));
+                    add(fileNameCurrentCommit);
+                }
+
+                /// Files modified in different ways (3 files exists) are in conflict.
+                if ((!Objects.equals(currentFileHash, givenFileHash))
+                        && (!Objects.equals(currentFileHash, splitFileHash))
+                        && (!Objects.equals(givenFileHash, splitFileHash))) {
+                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
+                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameCurrentCommit));
+                    deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
+                }
+            }
+
+
+            if ((!filesGivenCommit.containsKey(fileNameCurrentCommit))
+                    && filesSplitCommit.containsKey(fileNameCurrentCommit)) {
+                String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
+                String splitFileHash = filesSplitCommit.get(fileNameCurrentCommit);
+                /// Files unmodified in current branch, but absent in given branch
+                /// should be removed and untracked.
+                if (Objects.equals(currentFileHash, splitFileHash)) {
+                    File fileCWD = join(CWD, fileNameCurrentCommit);
+                    fileCWD.delete();
+                    rm(fileNameCurrentCommit);
+                } else {
+                    /// Files modified in current, deleted in given, should deel with conflict.
+                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
+                    deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, null);
+                }
+            }
+
+            /// Files absent at split, modified differently in given and current, should deel with conflict.
+            if (!filesSplitCommit.containsKey(fileNameCurrentCommit)) {
+                String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
+                String givenFileHash = filesGivenCommit.get(fileNameCurrentCommit);
+                if (!Objects.equals(currentFileHash, givenFileHash)) {
+                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
+                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameCurrentCommit));
+                    deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
+                }
+            }
+        }
+
+        for (String fileNameGivenCommit : filesGivenCommit.keySet()) {
+            /// Files only present in the given branch should be checked out and staged.
+            if ((!filesCurrentCommit.containsKey(fileNameGivenCommit))
+                    && (!filesSplitCommit.containsKey(fileNameGivenCommit))) {
+                checkOutCommit(givenBranchCommit.getId(), fileNameGivenCommit);
+                add(fileNameGivenCommit);
+            }
+            /// Files modified in given, deleted in current, should deel with conflict.
+            if ((!filesCurrentCommit.containsKey(fileNameGivenCommit))
+                    && filesSplitCommit.containsKey(fileNameGivenCommit)) {
+                String givenFileHash = filesGivenCommit.get(fileNameGivenCommit);
+                String splitFileHash = filesSplitCommit.get(fileNameGivenCommit);
+                if (!Objects.equals(givenFileHash, splitFileHash)) {
+                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameGivenCommit));
+                    deelWithConflictMerge(fileNameGivenCommit, null, givenFileBlob);
+                }
+            }
         }
     }
 
@@ -752,15 +853,50 @@ public class Repository {
      * Check if a directory has files inside.
      *
      * @param directory The directory to check
-     * @return True if has files
+     * @return True if it has files
      */
     private static boolean hasFiles(File directory) {
         File[] files = directory.listFiles();
         return files != null && files.length > 0;
     }
 
+    /**
+     * Quit the program with the message.
+     *
+     * @param message The message to print
+     */
     private static void quit(String message) {
         System.out.println(message);
         System.exit(0);
+    }
+
+    /**
+     * Get the split point commit by double circus pointer.
+     *
+     * @param c1 The newest commit of one branch
+     * @param c2 The newest commit of another branch
+     * @return The split point commit; null if no split point
+     */
+    private static Commit getSplitPointCommit(Commit c1, Commit c2) {
+        if (c1 == null || c2 == null) {
+            return null;
+        }
+        Commit pointerA = c1, pointerB = c2;
+        while (pointerA != pointerB) {
+            pointerA = (pointerA == null) ? c2 : getCommit(pointerA.getParent());
+            pointerB = (pointerB == null) ? c1 : getCommit(pointerB.getParent());
+        }
+        return pointerA;
+    }
+
+    /**
+     * Deel with merge conflict.
+     *
+     * @param fileName The name of the conflict file
+     * @param currentFile The file from current branch, null if not exist
+     * @param givenFile The file from given branch, null if not exist
+     */
+    private static void deelWithConflictMerge(String fileName, File currentFile, File givenFile) {
+
     }
 }
