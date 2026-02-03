@@ -645,7 +645,6 @@ public class Repository {
                 }
             }
 
-
             if ((!filesGivenCommit.containsKey(fileNameCurrentCommit))
                     && filesSplitCommit.containsKey(fileNameCurrentCommit)) {
                 String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
@@ -890,13 +889,33 @@ public class Repository {
     }
 
     /**
-     * Deel with merge conflict.
+     * Deel with merge conflict. Form a file with special content.
      *
      * @param fileName The name of the conflict file
      * @param currentFile The file from current branch, null if not exist
      * @param givenFile The file from given branch, null if not exist
      */
     private static void deelWithConflictMerge(String fileName, File currentFile, File givenFile) {
+        String currentContent = (currentFile == null) ? null : readContentsAsString(currentFile);
+        String givenContent = (givenFile == null) ? null : readContentsAsString(givenFile);
 
+        String newContent = "<<<<<<< HEAD\n" + currentContent
+                + "=======\n" + givenContent + ">>>>>>>\n";
+        File newContentFile = join(CWD, fileName);
+        if (!newContentFile.exists()) {
+            try {
+                newContentFile.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        writeContents(newContentFile, newContent);
+        add(fileName);
     }
 }
+
+
+
+
+
+
