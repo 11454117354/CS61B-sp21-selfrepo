@@ -151,7 +151,7 @@ public class Repository {
      *
      * @param message Message of this commit
      */
-    public static void commit(String message) {
+    public static void commit(String message, String secondParent) {
         /// Check if the message is blank.
         if (Objects.equals(message, "")) {
             quit("Please enter a commit message.");
@@ -185,7 +185,7 @@ public class Repository {
             }
         }
         ////  Create the new commit
-        Commit thisCommit = new Commit(message, parent, null, newTrackedFiles);
+        Commit thisCommit = new Commit(message, parent, secondParent, newTrackedFiles);
 
         /// Write this commit into persistence system.
         thisCommit.save();
@@ -589,7 +589,8 @@ public class Repository {
         }
 
         /// Check if the given branch is the current branch.
-        if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))) {
+        String currentBranchName = readContentsAsString(HEAD_FILE);
+        if (Objects.equals(branchName, currentBranchName)) {
             quit("Cannot merge a branch with itself.");
         }
 
@@ -692,6 +693,10 @@ public class Repository {
                 }
             }
         }
+
+        /// Commit all those changes.
+        String message = "Merged" + branchName + "into" + currentBranchName + ".";
+        commit(message, givenBranchCommit.getId());
     }
 
     /**
@@ -896,6 +901,8 @@ public class Repository {
      * @param givenFile The file from given branch, null if not exist
      */
     private static void deelWithConflictMerge(String fileName, File currentFile, File givenFile) {
+        System.out.println("Encountered a merge conflict.");
+
         String currentContent = (currentFile == null) ? null : readContentsAsString(currentFile);
         String givenContent = (givenFile == null) ? null : readContentsAsString(givenFile);
 

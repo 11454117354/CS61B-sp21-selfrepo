@@ -29,7 +29,7 @@ public class Main {
             case "commit":
                 checkInit();
                 validateNumArgs(args, 2);
-                Repository.commit(args[1]);
+                Repository.commit(args[1], null);
                 break;
             case "rm":
                 checkInit();
