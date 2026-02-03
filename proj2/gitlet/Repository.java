@@ -511,7 +511,7 @@ public class Repository {
         writeContents(HEAD_FILE, branchName);
 
         /// Delete files that are not in the new commit.
-        deleteFilesNotInCurrentCommit();
+        deleteFilesNotInHEADCommit();
     }
 
     /**
@@ -561,9 +561,24 @@ public class Repository {
      * @param prefix An arbitrary commit
      */
     public static void reset(String prefix) {
+        /// Get the commit.
         Commit destinedCommit = findCorrespondingCommit(prefix);
+
+        /// Check if there's untracked file.
         checkUntrackedFiles();
 
+        /// Write files into CWD.
+        writeAllFilesCWD(destinedCommit);
+
+        /// This part is kind of weird? Change pointer.
+        String branchName = readContentsAsString(HEAD_FILE);
+        writeContents(join(HEADS_DIR, branchName), destinedCommit.getId());
+
+        /// Delete files not in current HEAD commit.
+        deleteFilesNotInHEADCommit();
+
+        /// Clear staging area.
+        clearStaging();
     }
 
     /**
@@ -689,7 +704,7 @@ public class Repository {
     /**
      * Delete the files that are not in current commit.
      */
-    private static void deleteFilesNotInCurrentCommit() {
+    private static void deleteFilesNotInHEADCommit() {
         List<String> filesInCWD = plainFilenamesIn(CWD);
         Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
         if (filesInCWD != null) {
