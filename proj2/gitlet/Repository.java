@@ -501,6 +501,9 @@ public class Repository {
 
         /// Delete files that are not in the new commit.
         deleteFilesNotInHEADCommit();
+
+        /// Clear the staging area.
+        clearStaging();
     }
 
     /**
@@ -578,7 +581,7 @@ public class Repository {
      */
     public static void merge(String branchName) {
         /// Check if there are staged files uncommited.
-        if (!(hasFiles(ADD_DIR) || hasFiles(REMOVE_DIR))) {
+        if (hasFiles(ADD_DIR) || hasFiles(REMOVE_DIR)) {
             quit("You have uncommited changes.");
         }
 
@@ -885,12 +888,40 @@ public class Repository {
         if (c1 == null || c2 == null) {
             return null;
         }
-        Commit pointerA = c1, pointerB = c2;
-        while (pointerA != pointerB) {
-            pointerA = (pointerA == null) ? c2 : getCommit(pointerA.getParent());
-            pointerB = (pointerB == null) ? c1 : getCommit(pointerB.getParent());
+
+        /// Track all ancestors' id, including those connected by second parent.
+        Set<String> ancestors = new HashSet<>();
+        Deque<Commit> stack = new ArrayDeque<>();
+        stack.push(c1);
+        while (!stack.isEmpty()) {
+            Commit currentCommit = stack.pop();
+            String commitId = currentCommit.getId();
+            if (ancestors.add(commitId)) {
+                if (currentCommit.getParent() != null) {
+                    stack.push(getCommit(currentCommit.getParent()));
+                }
+                if (currentCommit.getSecondParent() != null) {
+                    stack.push(getCommit(currentCommit.getSecondParent()));
+                }
+            }
         }
-        return pointerA;
+
+        /// Start from c2, find the first commit in the ancestors set.
+        stack.clear();
+        stack.push(c2);
+        while (!stack.isEmpty()) {
+            Commit currentCommit = stack.pop();
+            if (ancestors.contains(currentCommit.getId())) {
+                return currentCommit;
+            }
+            if (currentCommit.getParent() != null) {
+                stack.push(getCommit(currentCommit.getParent()));
+            }
+            if (currentCommit.getSecondParent() != null) {
+                stack.push(getCommit(currentCommit.getSecondParent()));
+            }
+        }
+        return null;
     }
 
     /**
@@ -920,9 +951,3 @@ public class Repository {
         add(fileName);
     }
 }
-
-
-
-
-
-
