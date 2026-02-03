@@ -82,6 +82,11 @@ public class Main {
                 validateNumArgs(args, 2);
                 Repository.rmBranch(args[1]);
                 break;
+            case "reset":
+                checkInit();
+                validateNumArgs(args, 2);
+                Repository.reset(args[1]);
+                break;
 
             default:
                 System.out.println("No command with that name exists.");

@@ -461,38 +461,22 @@ public class Repository {
      * @param fileName The file to check out
      */
     public static void checkOutCommit(String prefix, String fileName) {
-        List<String> commitIds = plainFilenamesIn(COMMITS_DIR);
-        List<String> qualifiedIds = new ArrayList<>(2);
-        assert commitIds != null;
-        for (String commitId : commitIds) {
-            if (commitId.startsWith(prefix)) {
-                qualifiedIds.add(commitId);
+        Commit destinedCommit = findCorrespondingCommit(prefix);
+        Map<String, String> trackedFiles = destinedCommit.getTrackedFiles();
+        if (!trackedFiles.containsKey(fileName)) {
+            System.out.println("File does not exist in that commit.");
+            System.exit(0);
+        }
+        File CHECKOUT_FILE = join(CWD, fileName);
+        if (!CHECKOUT_FILE.exists()) {
+            try {
+                CHECKOUT_FILE.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
-        if (qualifiedIds.isEmpty()) {
-            System.out.println("No commit with that id exists.");
-            System.exit(0);
-        } else if (qualifiedIds.size() > 1) {
-            System.out.println("Prefix not unique.");
-            System.exit(0);
-        } else {
-            Commit destinedCommit = getCommit(qualifiedIds.get(0));
-            Map<String, String> trackedFiles = destinedCommit.getTrackedFiles();
-            if (!trackedFiles.containsKey(fileName)) {
-                System.out.println("File does not exist in that commit.");
-                System.exit(0);
-            }
-            File CHECKOUT_FILE = join(CWD, fileName);
-            if (!CHECKOUT_FILE.exists()) {
-                try {
-                    CHECKOUT_FILE.createNewFile();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            String fileHash = trackedFiles.get(fileName);
-            writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
-        }
+        String fileHash = trackedFiles.get(fileName);
+        writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
     }
 
     /**
@@ -515,48 +499,19 @@ public class Repository {
             System.exit(0);
         }
 
-        /// Find if there are untracked files.
-        List<String> filesInCWD = plainFilenamesIn(CWD);
-        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
-        if (filesInCWD != null) {
-            for (String fileInCWD : filesInCWD) {
-                if (headTrackedFiles.containsKey(fileInCWD)) {
-                    continue;
-                }
-                System.out.println("There is an untracked file in the way; " +
-                        "delete it, or add and commit it first.");
-                System.exit(0);
-            }
-        }
+        /// Check if there are untracked files.
+        checkUntrackedFiles();
 
         /// Change files.
         Commit branchHeadCommit = getCommit(readContentsAsString(
                 join(HEADS_DIR, branchName)));
-        Map<String, String> trackedFilesBranch = branchHeadCommit.getTrackedFiles();
-        for (String fileName : trackedFilesBranch.keySet()) {
-            File FILE_CWD = join(CWD, fileName);
-            if (!FILE_CWD.exists()) {
-                try {
-                    FILE_CWD.createNewFile();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            writeContents(FILE_CWD, (Object) readContents(join(BLOBS_DIR, trackedFilesBranch.get(fileName))));
-        }
+        writeAllFilesCWD(branchHeadCommit);
 
         /// Reset HEAD branch.
         writeContents(HEAD_FILE, branchName);
 
         /// Delete files that are not in the new commit.
-        if (filesInCWD != null) {
-            for (String fileInCWD : filesInCWD) {
-                if (headTrackedFiles.containsKey(fileInCWD)) {
-                    continue;
-                }
-                restrictedDelete(fileInCWD);
-            }
-        }
+        deleteFilesNotInCurrentCommit();
     }
 
     /**
@@ -596,6 +551,19 @@ public class Repository {
             System.exit(0);
         }
         branchToDelete.delete();
+    }
+
+    /**
+     * Set CWD to the destined commit, delete files that aren't tracked by that commit.
+     * Move the HEAD pointer.
+     * Clear staging area.
+     *
+     * @param prefix An arbitrary commit
+     */
+    public static void reset(String prefix) {
+        Commit destinedCommit = findCorrespondingCommit(prefix);
+        checkUntrackedFiles();
+
     }
 
     /**
@@ -673,5 +641,85 @@ public class Repository {
      */
     private static String generateHash(File file) {
         return Utils.sha1((Object) readContents(file));
+    }
+
+    /**
+     * Get the Commit by the prefix.
+     *
+     * @param prefix The arbitrary commit id
+     * @return The wanted commit
+     */
+    private static Commit findCorrespondingCommit(String prefix) {
+        List<String> commitIds = plainFilenamesIn(COMMITS_DIR);
+        List<String> qualifiedIds = new ArrayList<>();
+        assert commitIds != null;
+        for (String commitId : commitIds) {
+            if (commitId.startsWith(prefix)) {
+                qualifiedIds.add(commitId);
+            }
+        }
+        if (qualifiedIds.isEmpty()) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        } else if (qualifiedIds.size() > 1) {
+            System.out.println("Prefix not unique.");
+            System.exit(0);
+        }
+        return getCommit(qualifiedIds.get(0));
+    }
+
+    /**
+     * Check if there are untracked files exist. If so, print a message.
+     */
+    private static void checkUntrackedFiles() {
+        List<String> filesInCWD = plainFilenamesIn(CWD);
+        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
+        if (filesInCWD != null) {
+            for (String fileInCWD : filesInCWD) {
+                if (headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                System.out.println("There is an untracked file in the way; " +
+                        "delete it, or add and commit it first.");
+                System.exit(0);
+            }
+        }
+    }
+
+    /**
+     * Delete the files that are not in current commit.
+     */
+    private static void deleteFilesNotInCurrentCommit() {
+        List<String> filesInCWD = plainFilenamesIn(CWD);
+        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
+        if (filesInCWD != null) {
+            for (String fileInCWD : filesInCWD) {
+                if (headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                restrictedDelete(fileInCWD);
+            }
+        }
+    }
+
+    /**
+     * Write everything in one Commit to current directory.
+     *
+     * @param targetCommit The commit to get files from
+     */
+    private static void writeAllFilesCWD(Commit targetCommit) {
+        Map<String, String> trackedFilesBranch = targetCommit.getTrackedFiles();
+        for (String fileName : trackedFilesBranch.keySet()) {
+            File FILE_CWD = join(CWD, fileName);
+            if (!FILE_CWD.exists()) {
+                try {
+                    FILE_CWD.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            writeContents(FILE_CWD, (Object) readContents(
+                    join(BLOBS_DIR, trackedFilesBranch.get(fileName))));
+        }
     }
 }
