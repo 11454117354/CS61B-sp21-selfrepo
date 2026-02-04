@@ -59,11 +59,11 @@ public class Repository {
         ADD_DIR.mkdir();
         REMOVE_DIR.mkdir();
 
-        /// Create initial commit, and serialize it.
+        // Create initial commit, and serialize it.
         Commit initialCommit = new Commit("initial commit");
         initialCommit.save();
 
-        /// Write initial commit id into master pointer.
+        // Write initial commit id into master pointer.
         String id = initialCommit.getId();
         try {
             MASTER_FILE.createNewFile();
@@ -72,7 +72,7 @@ public class Repository {
         }
         writeContents(MASTER_FILE, id);
 
-        /// Set HEAD pointer (point to master)
+        // Set HEAD pointer (point to master)
         try {
             HEAD_FILE.createNewFile();
         } catch (IOException e) {
@@ -92,15 +92,15 @@ public class Repository {
     public static void add(String fileName) {
         final File addFile = join(CWD, fileName);
 
-        /// Check if the file exists.
+        // Check if the file exists.
         if (!addFile.exists()) {
             quit("File does not exist.");
         }
 
-        /// Generate the SHA-1 hash.
+        // Generate the SHA-1 hash.
         String blobId = generateHash(addFile);
 
-        /// Form the blob file and fill in the content
+        // Form the blob file and fill in the content
         final File blobFile = join(BLOBS_DIR, blobId);
         if (!blobFile.exists()) {
             try {
@@ -111,20 +111,20 @@ public class Repository {
             writeContents(blobFile, readContentsAsString(addFile));
         }
 
-        /// Check if current head commit is in track of this file.
+        // Check if current head commit is in track of this file.
         Commit headCommit = getHeadCommit();
         if (headCommit.getTrackedFiles().containsKey(fileName)) {
-            /// The hash of the existing old file.
+            // The hash of the existing old file.
             String headBlobId = headCommit.getTrackedFiles().get(fileName); 
 
-            /// If the added file is identical to that tracked by head commit, 
-            /// do not add it into stage area.
+            // If the added file is identical to that tracked by head commit, 
+            // do not add it into stage area.
             if (headBlobId.equals(blobId)) {
                 File existingIdenticalFileInAdd = join(ADD_DIR, fileName);
                 if (existingIdenticalFileInAdd.exists()) {
                     restrictedDelete(existingIdenticalFileInAdd);
                 }
-            } else {  /// File content is not identical, add it into stage area.
+            } else {  // File content is not identical, add it into stage area.
                 File stageFile = join(ADD_DIR, fileName);
                 try {
                     stageFile.createNewFile();
@@ -133,7 +133,7 @@ public class Repository {
                 }
                 writeContents(stageFile, blobId);
             }
-        } else {  /// No such file in head commit, add into stage area.
+        } else {  // No such file in head commit, add into stage area.
             File stageFile = join(ADD_DIR, fileName);
             try {
                 stageFile.createNewFile();
@@ -143,7 +143,7 @@ public class Repository {
             writeContents(stageFile, blobId);
         }
 
-        /// Check if it is in remove area. If so, delete it.
+        // Check if it is in remove area. If so, delete it.
         File removeFileWithId = join(REMOVE_DIR, fileName);
         if (removeFileWithId.exists()) {
             removeFileWithId.delete();
@@ -157,17 +157,17 @@ public class Repository {
      * @param message Message of this commit
      */
     public static void commit(String message, String secondParent) {
-        /// Check if the message is blank.
+        // Check if the message is blank.
         if (Objects.equals(message, "")) {
             quit("Please enter a commit message.");
         }
 
-        /// Create a new commit.
+        // Create a new commit.
         String currentBranch = readContentsAsString(HEAD_FILE);
         String parent = readContentsAsString(join(HEADS_DIR, currentBranch));
         Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
         File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
-        /// Add files to trackFiles map.
+        // Add files to trackFiles map.
         if ((addedFiles == null || addedFiles.length == 0)
                 && (removedFiles == null || removedFiles.length == 0)) {
             quit("No changes added to the commit.");
@@ -181,7 +181,7 @@ public class Repository {
                 }
             }
         }
-        /// Remove files in trackFiles map.
+        // Remove files in trackFiles map.
         if (removedFiles != null) {
             for (File f : removedFiles) {
                 if (f.isFile()) {
@@ -189,10 +189,10 @@ public class Repository {
                 }
             }
         }
-        ////  Create the new commit
+        ///  Create the new commit
         Commit thisCommit = new Commit(message, parent, secondParent, newTrackedFiles);
 
-        /// Write this commit into persistence system.
+        // Write this commit into persistence system.
         thisCommit.save();
         File branchRef = join(HEADS_DIR, currentBranch);
         writeContents(branchRef, thisCommit.getId());
@@ -208,7 +208,7 @@ public class Repository {
      * @param fileName The file to remove
      */
     public static void rm(String fileName) {
-        /// Situation 1
+        // Situation 1
         File[] addedFiles = ADD_DIR.listFiles();
         boolean addContainsFile = false;
         if (addedFiles != null) {
@@ -224,7 +224,7 @@ public class Repository {
             }
         }
 
-        /// Situation 2
+        // Situation 2
         Commit headCommit = getHeadCommit();
         boolean headContainsFile = headCommit.getTrackedFiles().containsKey(fileName);
         if (headContainsFile) {
@@ -236,14 +236,14 @@ public class Repository {
             }
             writeContents(removeFile, headCommit.getTrackedFiles().get(fileName));
 
-            /// Delete it if exists in working directory
+            // Delete it if exists in working directory
             File deleteFileInWorkingDir = join(CWD, fileName);
             if (deleteFileInWorkingDir.exists()) {
                 deleteFileInWorkingDir.delete();
             }
         }
 
-        /// Failure cases
+        // Failure cases
         if ((!addContainsFile) && (!headContainsFile)) {
             quit("No reason to remove the file.");
         }
@@ -304,7 +304,7 @@ public class Repository {
      * Also displays what files have been staged for addition or removal.
      */
     public static void status() {
-        /// Print branches.
+        // Print branches.
         System.out.println("=== Branches ===");
         List<String> branchNames = plainFilenamesIn(HEADS_DIR);
         assert branchNames != null;
@@ -318,7 +318,7 @@ public class Repository {
         }
         System.out.println();
 
-        /// Print staged files.
+        // Print staged files.
         System.out.println("=== Staged Files ===");
         List<String> stagedFiles = plainFilenamesIn(ADD_DIR);
         if (stagedFiles != null) {
@@ -329,7 +329,7 @@ public class Repository {
         }
         System.out.println();
 
-        /// Print removed files.
+        // Print removed files.
         System.out.println("=== Removed Files ===");
         List<String> removedFiles = plainFilenamesIn(REMOVE_DIR);
         if (removedFiles != null) {
@@ -340,10 +340,10 @@ public class Repository {
         }
         System.out.println();
 
-        /// Print modified but not staged files.
+        // Print modified but not staged files.
         printModifiedNotStagedFiles();
 
-        /// Print untracked files
+        // Print untracked files
         System.out.println("=== Untracked Files ===");
         List<String> printOutUntrackedFiles = new ArrayList<>(5);
         List<String> filesInWorkingDirectory = plainFilenamesIn(CWD);
@@ -443,21 +443,21 @@ public class Repository {
             quit("No need to checkout the current branch.");
         }
 
-        /// Check if there are untracked files.
+        // Check if there are untracked files.
         checkUntrackedFiles();
 
-        /// Change files.
+        // Change files.
         Commit branchHeadCommit = getCommit(readContentsAsString(
                 join(HEADS_DIR, branchName)));
         writeAllFilesCWD(branchHeadCommit);
 
-        /// Reset HEAD branch.
+        // Reset HEAD branch.
         writeContents(HEAD_FILE, branchName);
 
-        /// Delete files that are not in the new commit.
+        // Delete files that are not in the new commit.
         deleteFilesNotInHEADCommit();
 
-        /// Clear the staging area.
+        // Clear the staging area.
         clearStaging();
     }
 
@@ -505,11 +505,11 @@ public class Repository {
      * @param prefix An arbitrary commit
      */
     public static void reset(String prefix) {
-        /// Get the commit.
+        // Get the commit.
         Commit destinedCommit = findCorrespondingCommit(prefix);
         Map<String, String> destinedTrackedFiles = destinedCommit.getTrackedFiles();
 
-        /// Check if there's untracked file.
+        // Check if there's untracked file.
         // checkUntrackedFiles();
         // Correct untracked file check for reset
         List<String> filesInCWD = plainFilenamesIn(CWD);
@@ -532,17 +532,17 @@ public class Repository {
             }
         }
 
-        /// Write files into CWD.
+        // Write files into CWD.
         writeAllFilesCWD(destinedCommit);
 
-        /// This part is kind of weird? Change pointer.
+        // This part is kind of weird? Change pointer.
         String branchName = readContentsAsString(HEAD_FILE);
         writeContents(join(HEADS_DIR, branchName), destinedCommit.getId());
 
-        /// Delete files not in current HEAD commit.
+        // Delete files not in current HEAD commit.
         deleteFilesNotInHEADCommit();
 
-        /// Clear staging area.
+        // Clear staging area.
         clearStaging();
     }
 
@@ -558,49 +558,59 @@ public class Repository {
      * @param branchName The given branch to merge from
      */
     public static void merge(String branchName) {
-        /// Check if there are staged files uncommited.
+        // Check if there are staged files uncommited.
         if (hasFiles(ADD_DIR) || hasFiles(REMOVE_DIR)) {
             quit("You have uncommited changes.");
         }
 
-        /// Check if the branch name exists.
+        // Check if the branch name exists.
         File branchFile = join(HEADS_DIR, branchName);
         if (!branchFile.exists()) {
             quit("A branch with that name does not exist.");
         }
 
-        /// Check if the given branch is the current branch.
+        // Check if the given branch is the current branch.
         String currentBranchName = readContentsAsString(HEAD_FILE);
         if (Objects.equals(branchName, currentBranchName)) {
             quit("Cannot merge a branch with itself.");
         }
 
-        /// Check if there are untracked files.
+        // Check if there are untracked files.
         checkUntrackedFiles();
 
-        /// Get the split commit.
+        // Get the split commit.
         Commit currentCommit = getHeadCommit();
         Commit givenBranchCommit =
                 getCommit(readContentsAsString(join(HEADS_DIR, branchName)));
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
-        /// Situation 1.
+        // Situation 1.
         if (splitPointCommit != null
                 && Objects.equals(splitPointCommit.getId(), givenBranchCommit.getId())) {
             quit("Given branch is an ancestor of the current branch.");
         }
 
-        /// Situation 2.
+        // Situation 2.
         if (splitPointCommit != null
                 && Objects.equals(splitPointCommit.getId(), currentCommit.getId())) {
             checkOutBranch(branchName);
             quit("Current branch fast-forwarded.");
         }
 
-        /// Non-special cases below.
+        // Non-special cases below.
         Map<String, String> filesCurrentCommit = currentCommit.getTrackedFiles();
         Map<String, String> filesGivenCommit = givenBranchCommit.getTrackedFiles();
         Map<String, String> filesSplitCommit = splitPointCommit.getTrackedFiles();
+
+        if (filesCurrentCommit == null) {
+            filesSplitCommit = new HashMap<>();
+        }
+        if (filesGivenCommit == null) {
+            filesGivenCommit = new HashMap<>();
+        }
+        if (filesSplitCommit == null) {
+            filesSplitCommit = new HashMap<>();
+        }
 
         for (String fileNameCurrentCommit : filesCurrentCommit.keySet()) {
             if (filesGivenCommit.containsKey(fileNameCurrentCommit)
@@ -610,8 +620,8 @@ public class Repository {
                 String givenFileHash = filesGivenCommit.get(fileNameCurrentCommit);
                 String splitFileHash = filesSplitCommit.get(fileNameCurrentCommit);
 
-                /// Files modified in the given branch but not modified in current branch
-                /// should be changed into the version in the given branch.
+                // Files modified in the given branch but not modified in current branch
+                // should be changed into the version in the given branch.
                 if (Objects.equals(currentFileHash, splitFileHash)
                         && (!Objects.equals(givenFileHash, splitFileHash))) {
                     File givenFileBlob = join(BLOBS_DIR, givenFileHash);
@@ -619,7 +629,7 @@ public class Repository {
                     add(fileNameCurrentCommit);
                 }
 
-                /// Files modified in different ways (3 files exists) are in conflict.
+                // Files modified in different ways (3 files exists) are in conflict.
                 if ((!Objects.equals(currentFileHash, givenFileHash))
                         && (!Objects.equals(currentFileHash, splitFileHash))
                         && (!Objects.equals(givenFileHash, splitFileHash))) {
@@ -635,29 +645,30 @@ public class Repository {
                     && filesSplitCommit.containsKey(fileNameCurrentCommit)) {
                 String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
                 String splitFileHash = filesSplitCommit.get(fileNameCurrentCommit);
-                /// Files unmodified in current branch, but absent in given branch
-                /// should be removed and untracked.
+                // Files unmodified in current branch, but absent in given branch
+                // should be removed and untracked.
                 if (Objects.equals(currentFileHash, splitFileHash)) {
                     File fileCWD = join(CWD, fileNameCurrentCommit);
                     fileCWD.delete();
                     rm(fileNameCurrentCommit);
                 } else {
-                    /// Files modified in current, deleted in given, should deel with conflict.
+                    // Files modified in current, deleted in given, should deel with conflict.
                     File currentFileBlob = join(BLOBS_DIR, 
                             filesCurrentCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, null);
                 }
             }
 
-            /// Files absent at split, modified differently in given and current, 
-            /// should deel with conflict.
-            if (!filesSplitCommit.containsKey(fileNameCurrentCommit)) {
+            // Files absent at split, modified differently in given and current, 
+            // should deel with conflict.
+            if (!filesSplitCommit.containsKey(fileNameCurrentCommit)
+                    && filesGivenCommit.containsKey(fileNameCurrentCommit)) {
                 String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
                 String givenFileHash = filesGivenCommit.get(fileNameCurrentCommit);
                 if (!Objects.equals(currentFileHash, givenFileHash)) {
                     File currentFileBlob = join(BLOBS_DIR, 
                             filesCurrentCommit.get(fileNameCurrentCommit));
-                    File givenFileBlob = join(BLOBS_DIR, 
+                    File givenFileBlob = join(BLOBS_DIR,// TODO: fix bugs
                             filesGivenCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
                 }
@@ -665,13 +676,13 @@ public class Repository {
         }
 
         for (String fileNameGivenCommit : filesGivenCommit.keySet()) {
-            /// Files only present in the given branch should be checked out and staged.
+            // Files only present in the given branch should be checked out and staged.
             if ((!filesCurrentCommit.containsKey(fileNameGivenCommit))
                     && (!filesSplitCommit.containsKey(fileNameGivenCommit))) {
                 checkOutCommit(givenBranchCommit.getId(), fileNameGivenCommit);
                 add(fileNameGivenCommit);
             }
-            /// Files modified in given, deleted in current, should deel with conflict.
+            // Files modified in given, deleted in current, should deel with conflict.
             if ((!filesCurrentCommit.containsKey(fileNameGivenCommit))
                     && filesSplitCommit.containsKey(fileNameGivenCommit)) {
                 String givenFileHash = filesGivenCommit.get(fileNameGivenCommit);
@@ -684,7 +695,7 @@ public class Repository {
             }
         }
 
-        /// Commit all those changes.
+        // Commit all those changes.
         String message = "Merged " + branchName + " into " + currentBranchName + ".";
         commit(message, givenBranchCommit.getId());
     }
@@ -1037,8 +1048,8 @@ public class Repository {
         List<String> printOutFiles = new ArrayList<>(5);
         List<String> stagedFiles = plainFilenamesIn(ADD_DIR);
         List<String> removedFiles = plainFilenamesIn(REMOVE_DIR);
-        /// Get the file tracked in the current commit,
-        /// changed in the working directory, but not staged.
+        // Get the file tracked in the current commit,
+        // changed in the working directory, but not staged.
         Commit headCommit = getHeadCommit();
         Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
         for (String trackedFileName : headTrackedFiles.keySet()) {
@@ -1055,9 +1066,9 @@ public class Repository {
                 }
             }
         }
-        /// Get the file staged for addition,
-        /// but with different contents than in the working directory;
-        /// and get the file staged for addition, but deleted in the working directory.
+        // Get the file staged for addition,
+        // but with different contents than in the working directory;
+        // and get the file staged for addition, but deleted in the working directory.
         if (stagedFiles != null) {
             for (String stagedFile : stagedFiles) {
                 File fileInWorkingDir = join(CWD, stagedFile);
@@ -1072,8 +1083,8 @@ public class Repository {
                 }
             }
         }
-        /// Get the file Not staged for removal,
-        /// but tracked in the current commit and deleted from the working directory.
+        // Get the file Not staged for removal,
+        // but tracked in the current commit and deleted from the working directory.
         for (String trackedFileName : headTrackedFiles.keySet()) {
             if (removedFiles != null) {
                 if (removedFiles.contains(trackedFileName)) {
@@ -1085,7 +1096,7 @@ public class Repository {
                 printOutFiles.add(trackedFileName + " (deleted)");
             }
         }
-        /// Print out all those files.
+        // Print out all those files.
         Collections.sort(printOutFiles);
         for (String printOutFile : printOutFiles) {
             System.out.println(printOutFile);
