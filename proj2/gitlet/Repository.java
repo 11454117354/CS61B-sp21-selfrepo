@@ -2,6 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static gitlet.Utils.*;
@@ -724,6 +725,36 @@ public class Repository {
             quit("A remote with that name does not exist.");
         }
         removeRemoteFile.delete();
+    }
+
+    /**
+     * Append the current branch's commits to the end of the given branch.
+     *
+     * @param remoteName The remote repo to push to
+     * @param remoteBranch The branch of remote repo to append commits to
+     */
+    public static void push(String remoteName, String remoteBranch) {
+        File remoteInfo = join(REMOTE_DIR, remoteName);
+        String remotePath = readContentsAsString(remoteInfo);
+        File remoteDir = Paths.get(remotePath).toFile();
+
+        File gitletDirRm = join(remoteDir, ".gitlet");
+        if (!(gitletDirRm.exists() && gitletDirRm.isDirectory())) {
+            quit("Remote directory not found.");
+        }
+
+        File branchRmFile = join(gitletDirRm, "refs", "heads", remoteBranch);
+        Commit headCommit = getHeadCommit();
+        String headCommitId = headCommit.getId();
+        // If the branch in remote repo does not exist, add the branch.
+        if (!branchRmFile.exists()) {
+            try {
+                branchRmFile.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeContents(branchRmFile, headCommitId);
+        }
     }
 
     /**
