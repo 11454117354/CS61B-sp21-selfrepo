@@ -97,6 +97,11 @@ public class Main {
                 validateNumArgs(args, 1);
                 Repository.graphLog();
                 break;
+            case "add-remote":
+                checkInit();
+                validateNumArgs(args, 3);
+                Repository.addRemote(args[1], args[2]);
+                break;
 
             default:
                 throwError("No command with that name exists.");
