@@ -704,7 +704,7 @@ public class Repository {
         int onBranch = 0;
         boolean onSecondBranch = false;
         String headBranch = readContentsAsString(HEAD_FILE);
-        Map<String, String> branchesLeaves = readFolderToMap(BLOBS_DIR);
+        Map<String, String> branchesLeaves = readFolderToMap(HEADS_DIR);
         String headId = getHeadCommit().getId();
         Commit splitCommit = null;
         Commit originalParentCommit = null;
@@ -721,6 +721,7 @@ public class Repository {
             System.out.print(currentCommit.getId().substring(0, 7) + " ");
             if (Objects.equals(currentCommitId, headId)) {
                 System.out.print("(HEAD -> " + headBranch + ") ");
+                System.out.print("(" + branchesLeaves.get(currentCommitId) + ") ");
             } else if (branchesLeaves.containsKey(currentCommitId)) {
                 System.out.print("(" + branchesLeaves.get(currentCommitId) + ") ");
             }
@@ -779,79 +780,7 @@ public class Repository {
             }
         }
     }
-//    public static void graphLog() {
-//        Commit currentCommit = getHeadCommit();
-//        int haveBranches = 1;
-//        int onBranch = 0;
-//        boolean onSecondBranch = false;
-//        String headBranch = readContentsAsString(HEAD_FILE);
-//        Map<String, String> branchesLeaves = readFolderToMap(BLOBS_DIR);
-//        String headId = getHeadCommit().getId();
-//        Commit splitCommit = null;
-//        Commit originalParentCommit = null;
-//
-//        while (true) {
-//            String currentCommitId = currentCommit.getId();
-//            for (int i = 0; i < haveBranches; i++) {
-//                if (i == onBranch) {
-//                    System.out.print("* ");
-//                    continue;
-//                }
-//                System.out.print("| ");
-//            }
-//            System.out.print(currentCommit.getId().substring(0, 7) + " ");
-//            if (Objects.equals(currentCommitId, headId)) {
-//                System.out.print("(HEAD -> " + headBranch + ") ");
-//            } else if (branchesLeaves.containsKey(currentCommitId)) {
-//                System.out.print("(" + branchesLeaves.get(currentCommitId) + ") ");
-//            }
-//            System.out.println(currentCommit.getMessage());
-//            if (currentCommit.getSecondParent() != null) {
-//                for (int i = 0; i < haveBranches; i++) {
-//                    System.out.print("| ");
-//                }
-//                System.out.println("\\");
-//                Commit parentCommit = getCommit(currentCommit.getParent());
-//                Commit secondParentCommit = getCommit(currentCommit.getSecondParent());
-//                splitCommit = getSplitPointCommit(parentCommit, secondParentCommit);
-//                haveBranches++;
-//                onBranch++;
-//            }
-//            if (splitCommit != null) {
-//                if (!onSecondBranch && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
-//                    haveBranches--;
-//                    for (int i = 0; i < haveBranches; i++) {
-//                        System.out.print("| ");
-//                    }
-//                    System.out.println("/");
-//                }
-//            }
-//            if (currentCommit.getParent() == null) {
-//                break;
-//            }
-//            if (currentCommit.getSecondParent() != null) {
-//                currentCommit = getCommit(currentCommit.getSecondParent());
-//                onSecondBranch = true;
-//                originalParentCommit = getCommit(currentCommit.getParent());
-//            } else if (onSecondBranch
-//                    && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
-//                onSecondBranch = false;
-//                onBranch--;
-//                currentCommit = originalParentCommit;
-//            } else {
-//                currentCommit = getCommit(currentCommit.getParent());
-//            }
-//        }
-//    }
-//    *   text
-//    |\
-//    | * text
-//    | *
-//    | |\
-//    | | * text
-//    * |
-//    |/
-//    *
+
     /**
      * Get the head commit by getting HEAD id in persistence.
      */
@@ -1185,9 +1114,13 @@ public class Repository {
         if (files != null) {
             for (File file : files) {
                 if (file.isFile()) {
-                    String name = file.getName();
                     String content = readContentsAsString(file);
-                    map.put(content, name);
+                    String name = file.getName();
+                    if (map.containsKey(content)) {
+                        map.put(content, map.get(content) + " " + name);
+                    } else {
+                        map.put(content, name);
+                    }
                 }
             }
         }
