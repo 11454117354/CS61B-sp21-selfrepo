@@ -669,7 +669,6 @@ public class Repository {
                 }
                 System.out.println("/");
             }
-
             if (currentCommit.getParent() == null) {
                 break;
             }
@@ -1121,7 +1120,7 @@ public class Repository {
                 if (!Objects.equals(currentFileHash, givenFileHash)) {
                     File currentFileBlob = join(BLOBS_DIR,
                             filesCurrentCommit.get(fileNameCurrentCommit));
-                    File givenFileBlob = join(BLOBS_DIR,// TODO: fix bugs
+                    File givenFileBlob = join(BLOBS_DIR,
                             filesGivenCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
                 }
