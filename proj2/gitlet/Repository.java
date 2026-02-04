@@ -32,6 +32,7 @@ public class Repository {
     public static final File HEADS_DIR = join(REFS_DIR, "heads");
     public static final File ADD_DIR = join(STAGING_DIR, "add");
     public static final File REMOVE_DIR = join(STAGING_DIR, "remove");
+    public static final File REMOTE_DIR = join(GITLET_DIR, "remote");
 
     /** Files. */
     public static final File MASTER_FILE =  join(HEADS_DIR, "master");
@@ -58,6 +59,7 @@ public class Repository {
         HEADS_DIR.mkdir();
         ADD_DIR.mkdir();
         REMOVE_DIR.mkdir();
+        REMOTE_DIR.mkdir();
 
         // Create initial commit, and serialize it.
         Commit initialCommit = new Commit("initial commit");
@@ -698,7 +700,17 @@ public class Repository {
      * @param remoteDirectory The path of the directory
      */
     public static void addRemote(String remoteName, String remoteDirectory) {
-        System.out.println(remoteName + remoteDirectory);
+        File remoteFile = join(REMOTE_DIR, remoteName);
+        if (remoteFile.exists()) {
+            quit("A remote with that name already exists.");
+        }
+        try {
+            remoteFile.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String normalizedPath = remoteDirectory.replace("/", File.separator);
+        writeContents(remoteFile, normalizedPath);
     }
 
     /**
