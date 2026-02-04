@@ -45,8 +45,8 @@ public class Repository {
      */
     public static void init() {
         if (GITLET_DIR.exists()) {
-            System.out.println
-                    ("A Gitlet version-control system already exists in the current directory.");
+            System.out.println("A Gitlet version-control system "
+                    + "already exists in the current directory.");
             return;
         }
         GITLET_DIR.mkdir();
@@ -215,8 +215,8 @@ public class Repository {
             for (File f : addedFiles) {
                 if (f.getName().equals(fileName)) {
                     if (!f.delete()) {
-                        throw new RuntimeException
-                                ("Failed to delete staging file: " + f.getPath());
+                        throw new RuntimeException("Failed to delete staging file: "
+                                + f.getPath());
                     }
                     addContainsFile = true;
                     break;
@@ -341,67 +341,14 @@ public class Repository {
         System.out.println();
 
         /// Print modified but not staged files.
-        System.out.println("=== Modifications Not Staged For Commit ===");
-        List<String> printOutFiles = new ArrayList<>(5);
-        /// Get the file tracked in the current commit, 
-        /// changed in the working directory, but not staged.
-        Commit headCommit = getHeadCommit();
-        Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
-        for (String trackedFileName : headTrackedFiles.keySet()) {
-            if (stagedFiles != null) {
-                if (stagedFiles.contains(trackedFileName)) {
-                    continue;
-                }
-            }
-            File fileInWorkingDir = join(CWD, trackedFileName);
-            if (fileInWorkingDir.exists()) {
-                String currentHash = generateHash(fileInWorkingDir);
-                if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
-                    printOutFiles.add(trackedFileName + " (modified)");
-                }
-            }
-        }
-        /// Get the file staged for addition, 
-        /// but with different contents than in the working directory;
-        /// and get the file staged for addition, but deleted in the working directory.
-        if (stagedFiles != null) {
-            for (String stagedFile : stagedFiles) {
-                File fileInWorkingDir = join(CWD, stagedFile);
-                if (!fileInWorkingDir.exists()) {
-                    printOutFiles.add(stagedFile + " (deleted)");
-                }
-                String addHashOrigin = readContentsAsString(join(ADD_DIR, stagedFile));
-                if (fileInWorkingDir.exists()) {
-                    if (!generateHash(fileInWorkingDir).equals(addHashOrigin)) {
-                        printOutFiles.add(stagedFile + " (modified)");
-                    }
-                }
-            }
-        }
-        /// Get the file Not staged for removal,
-        /// but tracked in the current commit and deleted from the working directory.
-        for (String trackedFileName : headTrackedFiles.keySet()) {
-            if (removedFiles != null) {
-                if (removedFiles.contains(trackedFileName)) {
-                    continue;
-                }
-            }
-            File fileInWorkingDir = join(CWD, trackedFileName);
-            if (!fileInWorkingDir.exists()) {
-                printOutFiles.add(trackedFileName + " (deleted)");
-            }
-        }
-        /// Print out all those files.
-        Collections.sort(printOutFiles);
-        for (String printOutFile : printOutFiles) {
-            System.out.println(printOutFile);
-        }
-        System.out.println();
+        printModifiedNotStagedFiles();
 
         /// Print untracked files
         System.out.println("=== Untracked Files ===");
         List<String> printOutUntrackedFiles = new ArrayList<>(5);
         List<String> filesInWorkingDirectory = plainFilenamesIn(CWD);
+        Commit headCommit = getHeadCommit();
+        Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
         if (filesInWorkingDirectory != null) {
             for (String fileInWorkingDirectory : filesInWorkingDirectory) {
                 if (headTrackedFiles.containsKey(fileInWorkingDirectory)) {
@@ -717,7 +664,7 @@ public class Repository {
         }
 
         /// Commit all those changes.
-        String message = "Merged" + branchName + "into" + currentBranchName + ".";
+        String message = "Merged " + branchName + " into " + currentBranchName + ".";
         commit(message, givenBranchCommit.getId());
     }
 
@@ -931,7 +878,7 @@ public class Repository {
         queue.add(c2);
         visited.add(c2.getId());
         while (!queue.isEmpty()) {
-            Commit currentCommit = stack.pop();
+            Commit currentCommit = queue.remove();
             if (ancestors.contains(currentCommit.getId())) {
                 return currentCommit;
             }
@@ -976,5 +923,69 @@ public class Repository {
         }
         writeContents(newContentFile, newContent);
         add(fileName);
+    }
+
+    /**
+     * Print Modified but not staged files.
+     */
+    private static void printModifiedNotStagedFiles() {
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        List<String> printOutFiles = new ArrayList<>(5);
+        List<String> stagedFiles = plainFilenamesIn(ADD_DIR);
+        List<String> removedFiles = plainFilenamesIn(REMOVE_DIR);
+        /// Get the file tracked in the current commit,
+        /// changed in the working directory, but not staged.
+        Commit headCommit = getHeadCommit();
+        Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
+        for (String trackedFileName : headTrackedFiles.keySet()) {
+            if (stagedFiles != null) {
+                if (stagedFiles.contains(trackedFileName)) {
+                    continue;
+                }
+            }
+            File fileInWorkingDir = join(CWD, trackedFileName);
+            if (fileInWorkingDir.exists()) {
+                String currentHash = generateHash(fileInWorkingDir);
+                if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
+                    printOutFiles.add(trackedFileName + " (modified)");
+                }
+            }
+        }
+        /// Get the file staged for addition,
+        /// but with different contents than in the working directory;
+        /// and get the file staged for addition, but deleted in the working directory.
+        if (stagedFiles != null) {
+            for (String stagedFile : stagedFiles) {
+                File fileInWorkingDir = join(CWD, stagedFile);
+                if (!fileInWorkingDir.exists()) {
+                    printOutFiles.add(stagedFile + " (deleted)");
+                }
+                String addHashOrigin = readContentsAsString(join(ADD_DIR, stagedFile));
+                if (fileInWorkingDir.exists()) {
+                    if (!generateHash(fileInWorkingDir).equals(addHashOrigin)) {
+                        printOutFiles.add(stagedFile + " (modified)");
+                    }
+                }
+            }
+        }
+        /// Get the file Not staged for removal,
+        /// but tracked in the current commit and deleted from the working directory.
+        for (String trackedFileName : headTrackedFiles.keySet()) {
+            if (removedFiles != null) {
+                if (removedFiles.contains(trackedFileName)) {
+                    continue;
+                }
+            }
+            File fileInWorkingDir = join(CWD, trackedFileName);
+            if (!fileInWorkingDir.exists()) {
+                printOutFiles.add(trackedFileName + " (deleted)");
+            }
+        }
+        /// Print out all those files.
+        Collections.sort(printOutFiles);
+        for (String printOutFile : printOutFiles) {
+            System.out.println(printOutFile);
+        }
+        System.out.println();
     }
 }
