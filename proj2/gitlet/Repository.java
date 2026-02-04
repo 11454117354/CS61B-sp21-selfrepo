@@ -507,33 +507,27 @@ public class Repository {
     public static void reset(String prefix) {
         /// Get the commit.
         Commit destinedCommit = findCorrespondingCommit(prefix);
+        Map<String, String> destinedTrackedFiles = destinedCommit.getTrackedFiles();
 
         /// Check if there's untracked file.
         // checkUntrackedFiles();
+        // Correct untracked file check for reset
         List<String> filesInCWD = plainFilenamesIn(CWD);
-        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
-        Map<String, String> destinedTrackedFiles = destinedCommit.getTrackedFiles();
         if (filesInCWD != null) {
             for (String fileInCWD : filesInCWD) {
-                if (headTrackedFiles.containsKey(fileInCWD)) {
-                    continue;
-                }
-                File fileCWD = join(CWD, fileInCWD);
-                if (destinedTrackedFiles.containsKey(fileInCWD)) {
-                    if (!generateHash(fileCWD).equals(destinedTrackedFiles.get(fileInCWD))) {
-                        continue;
+                // If this file is NOT tracked by current HEAD
+                if (!getHeadCommit().getTrackedFiles().containsKey(fileInCWD)) {
+                    // And if the reset target commit WOULD overwrite this file
+                    if (destinedTrackedFiles.containsKey(fileInCWD)) {
+                        // Compute hash to check if it’s actually identical
+                        File working = join(CWD, fileInCWD);
+                        String workingHash = generateHash(working);
+                        String targetHash = destinedTrackedFiles.get(fileInCWD);
+                        if (!workingHash.equals(targetHash)) {
+                            quit("There is an untracked file in the way; "
+                                    + "delete it, or add and commit it first.");
+                        }
                     }
-                }
-                quit("There is an untracked file in the way; "
-                        + "delete it, or add and commit it first.");
-            }
-            for (String fileInCWD : filesInCWD) {
-                if (!headTrackedFiles.containsKey(fileInCWD)) {
-                    continue;
-                }
-                if (!destinedTrackedFiles.containsKey(fileInCWD)) {
-                    quit("There is an untracked file in the way; "
-                            + "delete it, or add and commit it first.");
                 }
             }
         }
@@ -748,9 +742,8 @@ public class Repository {
             }
 
             // 在进入下一次迭代、移动到下一个提交前：
-            // 如果当前正在遍历第二分支，且当前提交的父指向 split point，
-            // 则应打印斜线结束分支并回到主分支轨迹。
-            if (onSecondBranch && splitCommit != null
+            // 如果当前正在遍历第二分支，且当前提交的父指向 split point，则应打印斜线结束分支并回到主分支轨迹。
+            if (!onSecondBranch && splitCommit != null
                     && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
                 haveBranches--;
                 for (int i = 0; i < haveBranches; i++) {
@@ -957,7 +950,7 @@ public class Repository {
     }
 
     /**
-     * Get the split point commit by double circus pointer.
+     * Get the split point commit.
      *
      * @param c1 The newest commit of one branch
      * @param c2 The newest commit of another branch
@@ -967,45 +960,43 @@ public class Repository {
         if (c1 == null || c2 == null) {
             return null;
         }
-
-        /// Track all ancestors' id, including those connected by second parent.
-        Set<String> ancestors = new HashSet<>();
+        // 收集 c1 的所有祖先（包括自身）
+        Set<String> ancestors1 = new HashSet<>();
         Deque<Commit> stack = new ArrayDeque<>();
         stack.push(c1);
         while (!stack.isEmpty()) {
-            Commit currentCommit = stack.pop();
-            String commitId = currentCommit.getId();
-            if (ancestors.add(commitId)) {
-                if (currentCommit.getParent() != null) {
-                    stack.push(getCommit(currentCommit.getParent()));
-                }
-                if (currentCommit.getSecondParent() != null) {
-                    stack.push(getCommit(currentCommit.getSecondParent()));
-                }
+            Commit cur = stack.pop();
+            String id = cur.getId();
+            if (ancestors1.contains(id)) {
+                continue;
+            }
+            ancestors1.add(id);
+            if (cur.getParent() != null) {
+                stack.push(getCommit(cur.getParent()));
+            }
+            if (cur.getSecondParent() != null) {
+                stack.push(getCommit(cur.getSecondParent()));
             }
         }
-
-        /// Start from c2, find the first commit in the ancestors set.
-        Queue<Commit> queue = new ArrayDeque<>();
-        Set<String> visited = new HashSet<>();
+        // 从 c2 开始做 BFS，找到第一个出现在 ancestors1 的提交（即最近的公共祖先）
+        Deque<Commit> queue = new ArrayDeque<>();
+        Set<String> visited2 = new HashSet<>();
         queue.add(c2);
-        visited.add(c2.getId());
         while (!queue.isEmpty()) {
-            Commit currentCommit = queue.remove();
-            if (ancestors.contains(currentCommit.getId())) {
-                return currentCommit;
+            Commit cur = queue.remove();
+            String id = cur.getId();
+            if (visited2.contains(id)) {
+                continue;
             }
-            if (currentCommit.getParent() != null) {
-                Commit p = getCommit(currentCommit.getParent());
-                if (p != null && visited.add(p.getId())) {
-                    queue.add(p);
-                }
+            visited2.add(id);
+            if (ancestors1.contains(id)) {
+                return cur;
             }
-            if (currentCommit.getSecondParent() != null) {
-                Commit sp = getCommit(currentCommit.getSecondParent());
-                if (sp != null && visited.add(sp.getId())) {
-                    queue.add(sp);
-                }
+            if (cur.getParent() != null) {
+                queue.add(getCommit(cur.getParent()));
+            }
+            if (cur.getSecondParent() != null) {
+                queue.add(getCommit(cur.getSecondParent()));
             }
         }
         return null;
@@ -1117,7 +1108,7 @@ public class Repository {
                     String content = readContentsAsString(file);
                     String name = file.getName();
                     if (map.containsKey(content)) {
-                        map.put(content, map.get(content) + " " + name);
+                        map.put(content, map.get(content) + ", " + name);
                     } else {
                         map.put(content, name);
                     }
