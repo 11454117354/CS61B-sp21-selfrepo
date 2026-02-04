@@ -102,6 +102,10 @@ public class Main {
                 validateNumArgs(args, 3);
                 Repository.addRemote(args[1], args[2]);
                 break;
+            case "rm-remote":
+                checkInit();
+                validateNumArgs(args, 2);
+                Repository.removeRemote(args[1]);
 
             default:
                 throwError("No command with that name exists.");

@@ -714,6 +714,19 @@ public class Repository {
     }
 
     /**
+     * Remove information with the given remote name.
+     *
+     * @param remoteName The remote to delete
+     */
+    public static void removeRemote(String remoteName) {
+        File removeRemoteFile = join(REMOTE_DIR, remoteName);
+        if (!removeRemoteFile.exists()) {
+            quit("A remote with that name does not exist.");
+        }
+        removeRemoteFile.delete();
+    }
+
+    /**
      * Get the head commit by getting HEAD id in persistence.
      */
     private static Commit getHeadCommit() {
