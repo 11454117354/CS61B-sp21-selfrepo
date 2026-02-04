@@ -696,6 +696,163 @@ public class Repository {
     }
 
     /**
+     * Generate log information like a graph to showcase the structure of the tree.
+     */
+    public static void graphLog() {
+        Commit currentCommit = getHeadCommit();
+        int haveBranches = 1;
+        int onBranch = 0;
+        boolean onSecondBranch = false;
+        String headBranch = readContentsAsString(HEAD_FILE);
+        Map<String, String> branchesLeaves = readFolderToMap(BLOBS_DIR);
+        String headId = getHeadCommit().getId();
+        Commit splitCommit = null;
+        Commit originalParentCommit = null;
+
+        while (true) {
+            String currentCommitId = currentCommit.getId();
+            for (int i = 0; i < haveBranches; i++) {
+                if (i == onBranch) {
+                    System.out.print("* ");
+                    continue;
+                }
+                System.out.print("| ");
+            }
+            System.out.print(currentCommit.getId().substring(0, 7) + " ");
+            if (Objects.equals(currentCommitId, headId)) {
+                System.out.print("(HEAD -> " + headBranch + ") ");
+            } else if (branchesLeaves.containsKey(currentCommitId)) {
+                System.out.print("(" + branchesLeaves.get(currentCommitId) + ") ");
+            }
+            System.out.println(currentCommit.getMessage());
+
+            // 如果当前提交是合并提交，计算 split point 并准备分支绘制状态
+            if (currentCommit.getSecondParent() != null) {
+                // 保存第一父提交和第二父提交
+                Commit parentCommit = getCommit(currentCommit.getParent());
+                Commit secondParentCommit = getCommit(currentCommit.getSecondParent());
+                // split point 基于两条父分支（parentCommit, secondParentCommit）
+                splitCommit = getSplitPointCommit(parentCommit, secondParentCommit);
+
+                // 打印分支分叉图形并调整行列状态
+                for (int i = 0; i < haveBranches; i++) {
+                    System.out.print("| ");
+                }
+                System.out.println("\\");
+                haveBranches++;
+                onBranch++;
+
+                // 保存回到主分支时要用的 commit（应为当前合并提交的第一父）
+                originalParentCommit = parentCommit;
+            }
+
+            // 在进入下一次迭代、移动到下一个提交前：
+            // 如果当前正在遍历第二分支，且当前提交的父指向 split point，
+            // 则应打印斜线结束分支并回到主分支轨迹。
+            if (onSecondBranch && splitCommit != null
+                    && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
+                haveBranches--;
+                for (int i = 0; i < haveBranches; i++) {
+                    System.out.print("| ");
+                }
+                System.out.println("/");
+            }
+
+            if (currentCommit.getParent() == null) {
+                break;
+            }
+
+            // 移动到下一个提交：
+            if (currentCommit.getSecondParent() != null) {
+                // 先跳到第二父分支开始遍历第二支线
+                currentCommit = getCommit(currentCommit.getSecondParent());
+                onSecondBranch = true;
+                // originalParentCommit 已在上面保存为 parentCommit
+            } else if (onSecondBranch && splitCommit != null
+                    && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
+                // 到达 split point，回到原先的主分支继续遍历
+                onSecondBranch = false;
+                onBranch--;
+                currentCommit = originalParentCommit;
+            } else {
+                currentCommit = getCommit(currentCommit.getParent());
+            }
+        }
+    }
+//    public static void graphLog() {
+//        Commit currentCommit = getHeadCommit();
+//        int haveBranches = 1;
+//        int onBranch = 0;
+//        boolean onSecondBranch = false;
+//        String headBranch = readContentsAsString(HEAD_FILE);
+//        Map<String, String> branchesLeaves = readFolderToMap(BLOBS_DIR);
+//        String headId = getHeadCommit().getId();
+//        Commit splitCommit = null;
+//        Commit originalParentCommit = null;
+//
+//        while (true) {
+//            String currentCommitId = currentCommit.getId();
+//            for (int i = 0; i < haveBranches; i++) {
+//                if (i == onBranch) {
+//                    System.out.print("* ");
+//                    continue;
+//                }
+//                System.out.print("| ");
+//            }
+//            System.out.print(currentCommit.getId().substring(0, 7) + " ");
+//            if (Objects.equals(currentCommitId, headId)) {
+//                System.out.print("(HEAD -> " + headBranch + ") ");
+//            } else if (branchesLeaves.containsKey(currentCommitId)) {
+//                System.out.print("(" + branchesLeaves.get(currentCommitId) + ") ");
+//            }
+//            System.out.println(currentCommit.getMessage());
+//            if (currentCommit.getSecondParent() != null) {
+//                for (int i = 0; i < haveBranches; i++) {
+//                    System.out.print("| ");
+//                }
+//                System.out.println("\\");
+//                Commit parentCommit = getCommit(currentCommit.getParent());
+//                Commit secondParentCommit = getCommit(currentCommit.getSecondParent());
+//                splitCommit = getSplitPointCommit(parentCommit, secondParentCommit);
+//                haveBranches++;
+//                onBranch++;
+//            }
+//            if (splitCommit != null) {
+//                if (!onSecondBranch && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
+//                    haveBranches--;
+//                    for (int i = 0; i < haveBranches; i++) {
+//                        System.out.print("| ");
+//                    }
+//                    System.out.println("/");
+//                }
+//            }
+//            if (currentCommit.getParent() == null) {
+//                break;
+//            }
+//            if (currentCommit.getSecondParent() != null) {
+//                currentCommit = getCommit(currentCommit.getSecondParent());
+//                onSecondBranch = true;
+//                originalParentCommit = getCommit(currentCommit.getParent());
+//            } else if (onSecondBranch
+//                    && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
+//                onSecondBranch = false;
+//                onBranch--;
+//                currentCommit = originalParentCommit;
+//            } else {
+//                currentCommit = getCommit(currentCommit.getParent());
+//            }
+//        }
+//    }
+//    *   text
+//    |\
+//    | * text
+//    | *
+//    | |\
+//    | | * text
+//    * |
+//    |/
+//    *
+    /**
      * Get the head commit by getting HEAD id in persistence.
      */
     private static Commit getHeadCommit() {
@@ -1014,5 +1171,26 @@ public class Repository {
             System.out.println(printOutFile);
         }
         System.out.println();
+    }
+
+    /**
+     * Read files inside a folder to a map.
+     *
+     * @param folder The folder to read
+     * @return The map with key = file name, value = file content
+     */
+    private static Map<String, String> readFolderToMap(File folder) {
+        Map<String, String> map = new HashMap<>();
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    String name = file.getName();
+                    String content = readContentsAsString(file);
+                    map.put(content, name);
+                }
+            }
+        }
+        return map;
     }
 }

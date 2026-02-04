@@ -92,6 +92,11 @@ public class Main {
                 validateNumArgs(args, 2);
                 Repository.merge(args[1]);
                 break;
+            case "graph-log":
+                checkInit();
+                validateNumArgs(args, 1);
+                Repository.graphLog();
+                break;
 
             default:
                 throwError("No command with that name exists.");
