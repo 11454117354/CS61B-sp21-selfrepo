@@ -509,7 +509,34 @@ public class Repository {
         Commit destinedCommit = findCorrespondingCommit(prefix);
 
         /// Check if there's untracked file.
-        checkUntrackedFiles();
+        // checkUntrackedFiles();
+        List<String> filesInCWD = plainFilenamesIn(CWD);
+        Map<String, String> headTrackedFiles = getHeadCommit().getTrackedFiles();
+        Map<String, String> destinedTrackedFiles = destinedCommit.getTrackedFiles();
+        if (filesInCWD != null) {
+            for (String fileInCWD : filesInCWD) {
+                if (headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                File fileCWD = join(CWD, fileInCWD);
+                if (destinedTrackedFiles.containsKey(fileInCWD)) {
+                    if (!generateHash(fileCWD).equals(destinedTrackedFiles.get(fileInCWD))) {
+                        continue;
+                    }
+                }
+                quit("There is an untracked file in the way; "
+                        + "delete it, or add and commit it first.");
+            }
+            for (String fileInCWD : filesInCWD) {
+                if (!headTrackedFiles.containsKey(fileInCWD)) {
+                    continue;
+                }
+                if (!destinedTrackedFiles.containsKey(fileInCWD)) {
+                    quit("There is an untracked file in the way; "
+                            + "delete it, or add and commit it first.");
+                }
+            }
+        }
 
         /// Write files into CWD.
         writeAllFilesCWD(destinedCommit);
