@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -57,7 +56,8 @@ public class Commit implements Serializable {
     }
 
     /** Constructor of ordinary commit. */
-    public Commit(String message, String parent, String secondParent, Map<String, String> trackedFiles) {
+    public Commit(String message, String parent,
+                  String secondParent, Map<String, String> trackedFiles) {
         this.message = message;
         this.parent = parent;
         this.trackedFiles = new HashMap<>(trackedFiles);

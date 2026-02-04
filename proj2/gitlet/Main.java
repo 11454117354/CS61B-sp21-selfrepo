@@ -62,12 +62,12 @@ public class Main {
                     Repository.checkOutBranch(args[1]);
                 } else if (args.length == 3) {  /// -- [file name]
                     if (!Objects.equals(args[1], "--")) {
-                        throwError();
+                        throwError("Incorrect operands.");
                     }
                     Repository.checkOutFile(args[2]);
                 } else if (args.length == 4) {  /// [commit id] -- [file name]
                     if (!Objects.equals(args[2], "--")) {
-                        throwError();
+                        throwError("Incorrect operands.");
                     }
                     Repository.checkOutCommit(args[1], args[3]);
                 }
@@ -94,8 +94,7 @@ public class Main {
                 break;
 
             default:
-                System.out.println("No command with that name exists.");
-                System.exit(0);
+                throwError("No command with that name exists.");
                 break;
         }
     }
@@ -109,8 +108,7 @@ public class Main {
      */
     private static void validateNumArgs(String[] args, int n) {
         if (args.length != n) {
-            System.out.println("Incorrect operands.");
-            System.exit(0);
+            throwError("Incorrect operands.");
         }
     }
 
@@ -119,15 +117,15 @@ public class Main {
      */
     private static void checkInit() {
         if (!Repository.GITLET_DIR.exists()) {
-            throwError();
+            throwError("Not in an initialized Gitlet directory.");
         }
     }
 
     /**
      * Print out error message and exit program.
      */
-    private static void throwError() {
-        System.out.println("Not in an initialized Gitlet directory.");
+    private static void throwError(String message) {
+        System.out.println(message);
         System.exit(0);
     }
 }

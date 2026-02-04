@@ -40,11 +40,13 @@ public class Repository {
 
     /**
      * Initialize the persistence system and pointers for gitlet.
-     * A .gitlet folder will be generated, inside which has the persistence structure, as described in design document
+     * A .gitlet folder will be generated, inside which 
+     * has the persistence structure, as described in design document.
      */
     public static void init() {
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            System.out.println
+                    ("A Gitlet version-control system already exists in the current directory.");
             return;
         }
         GITLET_DIR.mkdir();
@@ -81,67 +83,70 @@ public class Repository {
 
     /**
      * Add ONE file into the staging area.
-     * Specifically form the blob file in blob folder, check if it already exists in the staging area,
+     * Specifically form the blob file in blob folder, 
+     * check if it already exists in the staging area,
      * and delete it if it's in remove area.
      *
      * @param fileName The file to add
      */
     public static void add(String fileName) {
-        final File ADD_FILE = join(CWD, fileName);
+        final File addFile = join(CWD, fileName);
 
         /// Check if the file exists.
-        if (!ADD_FILE.exists()) {
+        if (!addFile.exists()) {
             quit("File does not exist.");
         }
 
         /// Generate the SHA-1 hash.
-        String blobId = generateHash(ADD_FILE);
+        String blobId = generateHash(addFile);
 
         /// Form the blob file and fill in the content
-        final File BLOB_FILE = join(BLOBS_DIR, blobId);
-        if (!BLOB_FILE.exists()) {
+        final File blobFile = join(BLOBS_DIR, blobId);
+        if (!blobFile.exists()) {
             try {
-                BLOB_FILE.createNewFile();
+                blobFile.createNewFile();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            writeContents(BLOB_FILE, readContentsAsString(ADD_FILE));
+            writeContents(blobFile, readContentsAsString(addFile));
         }
 
         /// Check if current head commit is in track of this file.
         Commit headCommit = getHeadCommit();
         if (headCommit.getTrackedFiles().containsKey(fileName)) {
-            String headBlobId = headCommit.getTrackedFiles().get(fileName); /// The hash of the existing old file.
+            /// The hash of the existing old file.
+            String headBlobId = headCommit.getTrackedFiles().get(fileName); 
 
-            /// If the added file is identical to that tracked by head commit, do not add it into stage area.
+            /// If the added file is identical to that tracked by head commit, 
+            /// do not add it into stage area.
             if (headBlobId.equals(blobId)) {
-                File EXISTING_IDENTICAL_FILE_IN_ADD = join(ADD_DIR, fileName);
-                if (EXISTING_IDENTICAL_FILE_IN_ADD.exists()) {
-                    restrictedDelete(EXISTING_IDENTICAL_FILE_IN_ADD);
+                File existingIdenticalFileInAdd = join(ADD_DIR, fileName);
+                if (existingIdenticalFileInAdd.exists()) {
+                    restrictedDelete(existingIdenticalFileInAdd);
                 }
             } else {  /// File content is not identical, add it into stage area.
-                File STAGE_FILE = join(ADD_DIR, fileName);
+                File stageFile = join(ADD_DIR, fileName);
                 try {
-                    STAGE_FILE.createNewFile();
+                    stageFile.createNewFile();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-                writeContents(STAGE_FILE, blobId);
+                writeContents(stageFile, blobId);
             }
         } else {  /// No such file in head commit, add into stage area.
-            File STAGE_FILE = join(ADD_DIR, fileName);
+            File stageFile = join(ADD_DIR, fileName);
             try {
-                STAGE_FILE.createNewFile();
+                stageFile.createNewFile();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            writeContents(STAGE_FILE, blobId);
+            writeContents(stageFile, blobId);
         }
 
         /// Check if it is in remove area. If so, delete it.
-        File REMOVE_FILE_WITH_ID = join(REMOVE_DIR, fileName);
-        if (REMOVE_FILE_WITH_ID.exists()) {
-            REMOVE_FILE_WITH_ID.delete();
+        File removeFileWithId = join(REMOVE_DIR, fileName);
+        if (removeFileWithId.exists()) {
+            removeFileWithId.delete();
         }
     }
 
@@ -210,7 +215,8 @@ public class Repository {
             for (File f : addedFiles) {
                 if (f.getName().equals(fileName)) {
                     if (!f.delete()) {
-                        throw new RuntimeException("Failed to delete staging file: " + f.getPath());
+                        throw new RuntimeException
+                                ("Failed to delete staging file: " + f.getPath());
                     }
                     addContainsFile = true;
                     break;
@@ -222,18 +228,18 @@ public class Repository {
         Commit headCommit = getHeadCommit();
         boolean headContainsFile = headCommit.getTrackedFiles().containsKey(fileName);
         if (headContainsFile) {
-            File REMOVE_FILE = join(REMOVE_DIR, fileName);
+            File removeFile = join(REMOVE_DIR, fileName);
             try {
-                REMOVE_FILE.createNewFile();
+                removeFile.createNewFile();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            writeContents(REMOVE_FILE, headCommit.getTrackedFiles().get(fileName));
+            writeContents(removeFile, headCommit.getTrackedFiles().get(fileName));
 
             /// Delete it if exists in working directory
-            File DELETE_FILE_IN_WORKING_DIR = join(CWD, fileName);
-            if (DELETE_FILE_IN_WORKING_DIR.exists()) {
-                DELETE_FILE_IN_WORKING_DIR.delete();
+            File deleteFileInWorkingDir = join(CWD, fileName);
+            if (deleteFileInWorkingDir.exists()) {
+                deleteFileInWorkingDir.delete();
             }
         }
 
@@ -337,7 +343,8 @@ public class Repository {
         /// Print modified but not staged files.
         System.out.println("=== Modifications Not Staged For Commit ===");
         List<String> printOutFiles = new ArrayList<>(5);
-        /// Get the file tracked in the current commit, changed in the working directory, but not staged.
+        /// Get the file tracked in the current commit, 
+        /// changed in the working directory, but not staged.
         Commit headCommit = getHeadCommit();
         Map<String, String> headTrackedFiles = headCommit.getTrackedFiles();
         for (String trackedFileName : headTrackedFiles.keySet()) {
@@ -346,25 +353,26 @@ public class Repository {
                     continue;
                 }
             }
-            File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
-            if (FILE_IN_WORKING_DIRECTORY.exists()) {
-                String currentHash = generateHash(FILE_IN_WORKING_DIRECTORY);
+            File fileInWorkingDir = join(CWD, trackedFileName);
+            if (fileInWorkingDir.exists()) {
+                String currentHash = generateHash(fileInWorkingDir);
                 if (!currentHash.equals(headTrackedFiles.get(trackedFileName))) {
                     printOutFiles.add(trackedFileName + " (modified)");
                 }
             }
         }
-        /// Get the file staged for addition, but with different contents than in the working directory;
+        /// Get the file staged for addition, 
+        /// but with different contents than in the working directory;
         /// and get the file staged for addition, but deleted in the working directory.
         if (stagedFiles != null) {
             for (String stagedFile : stagedFiles) {
-                File FILE_IN_WORKING_DIRECTORY = join(CWD, stagedFile);
-                if (!FILE_IN_WORKING_DIRECTORY.exists()) {
+                File fileInWorkingDir = join(CWD, stagedFile);
+                if (!fileInWorkingDir.exists()) {
                     printOutFiles.add(stagedFile + " (deleted)");
                 }
                 String addHashOrigin = readContentsAsString(join(ADD_DIR, stagedFile));
-                if (FILE_IN_WORKING_DIRECTORY.exists()) {
-                    if (!generateHash(FILE_IN_WORKING_DIRECTORY).equals(addHashOrigin)) {
+                if (fileInWorkingDir.exists()) {
+                    if (!generateHash(fileInWorkingDir).equals(addHashOrigin)) {
                         printOutFiles.add(stagedFile + " (modified)");
                     }
                 }
@@ -378,8 +386,8 @@ public class Repository {
                     continue;
                 }
             }
-            File FILE_IN_WORKING_DIRECTORY = join(CWD, trackedFileName);
-            if (!FILE_IN_WORKING_DIRECTORY.exists()) {
+            File fileInWorkingDir = join(CWD, trackedFileName);
+            if (!fileInWorkingDir.exists()) {
                 printOutFiles.add(trackedFileName + " (deleted)");
             }
         }
@@ -434,22 +442,22 @@ public class Repository {
         if (!trackedFiles.containsKey(fileName)) {
             quit("File does not exist in that commit.");
         }
-        File CHECKOUT_FILE = join(CWD, fileName);
-        if (!CHECKOUT_FILE.exists()) {
+        File checkoutFile = join(CWD, fileName);
+        if (!checkoutFile.exists()) {
             try {
-                CHECKOUT_FILE.createNewFile();
+                checkoutFile.createNewFile();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
         String fileHash = trackedFiles.get(fileName);
-        writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
+        writeContents(checkoutFile, (Object) readContents(join(BLOBS_DIR, fileHash)));
     }
 
     /**
      * Take the version of file in the given commit, replace the one in working directory.
      *
-     * @param prefix The commit version to take (allow user to input the first few digit of the id)
+     * @param prefix The commit version to take(allow user to input the first few digit of the id)
      * @param fileName The file to check out
      */
     public static void checkOutCommit(String prefix, String fileName) {
@@ -458,16 +466,16 @@ public class Repository {
         if (!trackedFiles.containsKey(fileName)) {
             quit("File does not exist in that commit.");
         }
-        File CHECKOUT_FILE = join(CWD, fileName);
-        if (!CHECKOUT_FILE.exists()) {
+        File checkoutFile = join(CWD, fileName);
+        if (!checkoutFile.exists()) {
             try {
-                CHECKOUT_FILE.createNewFile();
+                checkoutFile.createNewFile();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
         String fileHash = trackedFiles.get(fileName);
-        writeContents(CHECKOUT_FILE, (Object) readContents(join(BLOBS_DIR, fileHash)));
+        writeContents(checkoutFile, (Object) readContents(join(BLOBS_DIR, fileHash)));
     }
 
     /**
@@ -484,7 +492,7 @@ public class Repository {
         if (!branched.contains(branchName)) {
             quit("No such branch exists.");
         }
-        if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))){
+        if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))) {
             quit("No need to checkout the current branch.");
         }
 
@@ -573,8 +581,10 @@ public class Repository {
     /**
      * Merges files from the given branch into the current branch.
      * 2 special situations below:
-     * Situation 1(linear): Given branch's head commit is the split point. Do nothing and print message.
-     * Situation 2(linear): Current branch's head commit is the split point. Checkout the given branch.
+     * Situation 1(linear): Given branch's head commit is the split point. 
+     *      Do nothing and print message.
+     * Situation 2(linear): Current branch's head commit is the split point. 
+     *      Checkout the given branch.
      * Both situation above don't make new commit.
      *
      * @param branchName The given branch to merge from
@@ -645,8 +655,10 @@ public class Repository {
                 if ((!Objects.equals(currentFileHash, givenFileHash))
                         && (!Objects.equals(currentFileHash, splitFileHash))
                         && (!Objects.equals(givenFileHash, splitFileHash))) {
-                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
-                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameCurrentCommit));
+                    File currentFileBlob = join(BLOBS_DIR, 
+                            filesCurrentCommit.get(fileNameCurrentCommit));
+                    File givenFileBlob = join(BLOBS_DIR, 
+                            filesGivenCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
                 }
             }
@@ -663,18 +675,22 @@ public class Repository {
                     rm(fileNameCurrentCommit);
                 } else {
                     /// Files modified in current, deleted in given, should deel with conflict.
-                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
+                    File currentFileBlob = join(BLOBS_DIR, 
+                            filesCurrentCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, null);
                 }
             }
 
-            /// Files absent at split, modified differently in given and current, should deel with conflict.
+            /// Files absent at split, modified differently in given and current, 
+            /// should deel with conflict.
             if (!filesSplitCommit.containsKey(fileNameCurrentCommit)) {
                 String currentFileHash = filesCurrentCommit.get(fileNameCurrentCommit);
                 String givenFileHash = filesGivenCommit.get(fileNameCurrentCommit);
                 if (!Objects.equals(currentFileHash, givenFileHash)) {
-                    File currentFileBlob = join(BLOBS_DIR, filesCurrentCommit.get(fileNameCurrentCommit));
-                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameCurrentCommit));
+                    File currentFileBlob = join(BLOBS_DIR, 
+                            filesCurrentCommit.get(fileNameCurrentCommit));
+                    File givenFileBlob = join(BLOBS_DIR, 
+                            filesGivenCommit.get(fileNameCurrentCommit));
                     deelWithConflictMerge(fileNameCurrentCommit, currentFileBlob, givenFileBlob);
                 }
             }
@@ -693,7 +709,8 @@ public class Repository {
                 String givenFileHash = filesGivenCommit.get(fileNameGivenCommit);
                 String splitFileHash = filesSplitCommit.get(fileNameGivenCommit);
                 if (!Objects.equals(givenFileHash, splitFileHash)) {
-                    File givenFileBlob = join(BLOBS_DIR, filesGivenCommit.get(fileNameGivenCommit));
+                    File givenFileBlob = join(BLOBS_DIR, 
+                            filesGivenCommit.get(fileNameGivenCommit));
                     deelWithConflictMerge(fileNameGivenCommit, null, givenFileBlob);
                 }
             }
@@ -815,8 +832,8 @@ public class Repository {
                 if (headTrackedFiles.containsKey(fileInCWD)) {
                     continue;
                 }
-                quit("There is an untracked file in the way; " +
-                        "delete it, or add and commit it first.");
+                quit("There is an untracked file in the way; "
+                        + "delete it, or add and commit it first.");
             }
         }
     }
@@ -845,15 +862,15 @@ public class Repository {
     private static void writeAllFilesCWD(Commit targetCommit) {
         Map<String, String> trackedFilesBranch = targetCommit.getTrackedFiles();
         for (String fileName : trackedFilesBranch.keySet()) {
-            File FILE_CWD = join(CWD, fileName);
-            if (!FILE_CWD.exists()) {
+            File fileCurWorkingDir = join(CWD, fileName);
+            if (!fileCurWorkingDir.exists()) {
                 try {
-                    FILE_CWD.createNewFile();
+                    fileCurWorkingDir.createNewFile();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
-            writeContents(FILE_CWD, (Object) readContents(
+            writeContents(fileCurWorkingDir, (Object) readContents(
                     join(BLOBS_DIR, trackedFilesBranch.get(fileName))));
         }
     }
@@ -909,18 +926,26 @@ public class Repository {
         }
 
         /// Start from c2, find the first commit in the ancestors set.
-        stack.clear();
-        stack.push(c2);
-        while (!stack.isEmpty()) {
+        Queue<Commit> queue = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+        queue.add(c2);
+        visited.add(c2.getId());
+        while (!queue.isEmpty()) {
             Commit currentCommit = stack.pop();
             if (ancestors.contains(currentCommit.getId())) {
                 return currentCommit;
             }
             if (currentCommit.getParent() != null) {
-                stack.push(getCommit(currentCommit.getParent()));
+                Commit p = getCommit(currentCommit.getParent());
+                if (p != null && visited.add(p.getId())) {
+                    queue.add(p);
+                }
             }
             if (currentCommit.getSecondParent() != null) {
-                stack.push(getCommit(currentCommit.getSecondParent()));
+                Commit sp = getCommit(currentCommit.getSecondParent());
+                if (sp != null && visited.add(sp.getId())) {
+                    queue.add(sp);
+                }
             }
         }
         return null;
