@@ -38,7 +38,10 @@ trackedFiles (Map<String, String>)(Map<Filename, blobId>)
 │   ├── commits/
 │   └── blobs/(存储每个add进的文件，名字是hash)
 ├── refs/
-│   └── heads/(内含master文件，内容是master指向的commit的hash; 与其他的branch文件，文件名是branch名，内容是hash)
+│   ├── heads/(内含master文件，内容是master指向的commit的hash; 与其他的branch文件，文件名是branch名，内容是hash)
+│   └── remotes/(存放来自remote的branches)
+│       ├── (remote1)(文件夹名为remote名，其内存放fetch过来的branch文件)
+│       └── (remote2)
 ├── staging/
 │   ├── add/(存放刚add的文件，文件名为原文件名，blobId(hash)作为文件内容)
 │   └── remove/

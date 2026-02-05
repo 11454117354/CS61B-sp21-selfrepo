@@ -25,6 +25,7 @@ public class Repository {
     public static final File COMMITS_DIR = join(OBJECTS_DIR, "commits");
     public static final File BLOBS_DIR = join(OBJECTS_DIR, "blobs");
     public static final File HEADS_DIR = join(REFS_DIR, "heads");
+    public static final File REFS_REMOTES_DIR = join(REFS_DIR, "remotes");
     public static final File ADD_DIR = join(STAGING_DIR, "add");
     public static final File REMOVE_DIR = join(STAGING_DIR, "remove");
     public static final File REMOTE_DIR = join(GITLET_DIR, "remote");
@@ -52,6 +53,7 @@ public class Repository {
         COMMITS_DIR.mkdir();
         BLOBS_DIR.mkdir();
         HEADS_DIR.mkdir();
+        REFS_REMOTES_DIR.mkdir();
         ADD_DIR.mkdir();
         REMOVE_DIR.mkdir();
         REMOTE_DIR.mkdir();
@@ -161,7 +163,18 @@ public class Repository {
 
         // Create a new commit.
         String currentBranch = readContentsAsString(HEAD_FILE);
-        String parent = readContentsAsString(join(HEADS_DIR, currentBranch));
+        String parent;
+        File branchRef;
+        if (currentBranch.contains("/")) {
+            String[] parts = currentBranch.split("/", 2);
+            String remoteName = parts[0];
+            String branchName = parts[1];
+            branchRef = join(REFS_REMOTES_DIR, remoteName, branchName);
+            parent = readContentsAsString(branchRef);
+        } else {
+            branchRef = join(HEADS_DIR, currentBranch);
+            parent = readContentsAsString(branchRef);
+        }
         Map<String, String> newTrackedFiles = new HashMap<>(getHeadCommit().getTrackedFiles());
         File[] addedFiles = ADD_DIR.listFiles(), removedFiles = REMOVE_DIR.listFiles();
         // Add files to trackFiles map.
@@ -191,7 +204,6 @@ public class Repository {
 
         // Write this commit into persistence system.
         thisCommit.save();
-        File branchRef = join(HEADS_DIR, currentBranch);
         writeContents(branchRef, thisCommit.getId());
 
         clearStaging();
@@ -304,6 +316,22 @@ public class Repository {
         // Print branches.
         System.out.println("=== Branches ===");
         List<String> branchNames = plainFilenamesIn(HEADS_DIR);
+        if (branchNames == null) {
+            branchNames = new ArrayList<>();
+        } else {
+            branchNames = new ArrayList<>(branchNames);
+        }
+        File[] remoteFiles = REFS_REMOTES_DIR.listFiles();
+        if (remoteFiles != null) {
+            for (File remoteFile : remoteFiles) {
+                List<String> branchNamesInRmDir = plainFilenamesIn(remoteFile);
+                if (branchNamesInRmDir != null) {
+                    for (String branchName : branchNamesInRmDir) {
+                        branchNames.add(remoteFile.getName() + "/" + branchName);
+                    }
+                }
+            }
+        }
         assert branchNames != null;
         Collections.sort(branchNames);
         for (String branchName : branchNames) {
@@ -431,10 +459,22 @@ public class Repository {
      * @param branchName Name of branch to check out
      */
     public static void checkOutBranch(String branchName) {
-        List<String> branched = plainFilenamesIn(HEADS_DIR);
-        assert branched != null;
-        if (!branched.contains(branchName)) {
-            quit("No such branch exists.");
+        Commit branchHeadCommit;
+        if (branchName.contains("/")) {
+            String[] parts = branchName.split("/", 2);
+            String remoteName = parts[0];
+            String branchNameRm = parts[1];
+            File branchFile = join(REFS_REMOTES_DIR, remoteName, branchNameRm);
+            if (!branchFile.exists()) {
+                quit("No such branch exists.");
+            }
+            branchHeadCommit = getCommit(readContentsAsString(branchFile));
+        } else {
+            File branchFile = join(HEADS_DIR, branchName);
+            if (!branchFile.exists()) {
+                quit("No such branch exists.");
+            }
+            branchHeadCommit = getCommit(readContentsAsString(branchFile));
         }
         if (Objects.equals(branchName, readContentsAsString(HEAD_FILE))) {
             quit("No need to checkout the current branch.");
@@ -444,8 +484,6 @@ public class Repository {
         checkUntrackedFiles();
 
         // Change files.
-        Commit branchHeadCommit = getCommit(readContentsAsString(
-                join(HEADS_DIR, branchName)));
         writeAllFilesCWD(branchHeadCommit);
 
         // Reset HEAD branch.
@@ -507,7 +545,6 @@ public class Repository {
         Map<String, String> destinedTrackedFiles = destinedCommit.getTrackedFiles();
 
         // Check if there's untracked file.
-        // checkUntrackedFiles();
         // Correct untracked file check for reset
         List<String> filesInCWD = plainFilenamesIn(CWD);
         if (filesInCWD != null) {
@@ -534,7 +571,12 @@ public class Repository {
 
         // This part is kind of weird? Change pointer.
         String branchName = readContentsAsString(HEAD_FILE);
-        writeContents(join(HEADS_DIR, branchName), destinedCommit.getId());
+        if (branchName.contains("/")) {
+            String[] parts = branchName.split("/", 2);
+            writeContents(join(REFS_REMOTES_DIR, parts[0], parts[1]), destinedCommit.getId());
+        } else {
+            writeContents(join(HEADS_DIR, branchName), destinedCommit.getId());
+        }
 
         // Delete files not in current HEAD commit.
         deleteFilesNotInHEADCommit();
@@ -561,8 +603,8 @@ public class Repository {
         }
 
         // Check if the branch name exists.
-        File branchFile = join(HEADS_DIR, branchName);
-        if (!branchFile.exists()) {
+        Commit givenBranchCommit = getBranchCommit(branchName);
+        if (givenBranchCommit == null) {
             quit("A branch with that name does not exist.");
         }
 
@@ -577,8 +619,6 @@ public class Repository {
 
         // Get the split commit.
         Commit currentCommit = getHeadCommit();
-        Commit givenBranchCommit =
-                getCommit(readContentsAsString(join(HEADS_DIR, branchName)));
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
         // Situation 1.
@@ -614,6 +654,11 @@ public class Repository {
         boolean onSecondBranch = false;
         String headBranch = readContentsAsString(HEAD_FILE);
         Map<String, String> branchesLeaves = readFolderToMap(HEADS_DIR);
+        File[] remoteFolders = REFS_REMOTES_DIR.listFiles();
+        if (remoteFolders != null) {
+            Map<String, String> branchesLeavesRm = readFolderToMap(remoteFolders);
+            branchesLeaves.putAll(branchesLeavesRm);
+        }
         String headId = getHeadCommit().getId();
         Commit splitCommit = null;
         Commit originalParentCommit = null;
@@ -706,6 +751,14 @@ public class Repository {
         }
         String normalizedPath = remoteDirectory.replace("/", File.separator);
         writeContents(remoteFile, normalizedPath);
+
+        // Create a directory in REFS_REMOTE_DIR
+        File remoteBranchDir = join(REFS_REMOTES_DIR, remoteName);
+        if (!remoteBranchDir.exists()) {
+            remoteBranchDir.mkdir();
+        } else {
+            quit("Conflict in creating directory.");
+        }
     }
 
     /**
@@ -719,6 +772,8 @@ public class Repository {
             quit("A remote with that name does not exist.");
         }
         removeRemoteFile.delete();
+        File remoteBranchDir = join(REFS_REMOTES_DIR, remoteName);
+        remoteBranchDir.delete();
     }
 
     /**
@@ -828,10 +883,6 @@ public class Repository {
             quit("That remote does not have that branch.");
         }
 
-        // Create a new branch in local.
-        String branchName = remoteName + "/" + remoteBranch;
-        branch(branchName);
-
         // Get the set of commits to copy to local repo.
         String headIdLc = getHeadCommit().getId();
         String headIdRm = readContentsAsString(branchRmFile);
@@ -872,8 +923,17 @@ public class Repository {
             }
         }
 
-        // Set the branch's head.
-        File branchFile = join(HEADS_DIR, branchName);
+        // Create a new branch in local.
+        File branchDir = join(REFS_REMOTES_DIR, remoteName);
+        File branchFile = join(branchDir, remoteBranch);
+        if (branchFile.exists()) {
+            quit("A branch with that name already exists.");
+        }
+        try {
+            branchFile.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         writeContents(branchFile, headIdRm);
     }
 
@@ -882,7 +942,15 @@ public class Repository {
      */
     private static Commit getHeadCommit() {
         String branch = readContentsAsString(HEAD_FILE);
-        String headCommitId = readContentsAsString(join(HEADS_DIR, branch));
+        String headCommitId = null;
+        if (branch.contains("/")) {
+            String[] parts = branch.split("/", 2);
+            String remoteName = parts[0];
+            String branchName = parts[1];
+            headCommitId = readContentsAsString(join(REFS_REMOTES_DIR, remoteName, branchName));
+        } else {
+            headCommitId = readContentsAsString(join(HEADS_DIR, branch));
+        }
         return readObject(join(COMMITS_DIR, headCommitId), Commit.class);
     }
 
@@ -1233,14 +1301,40 @@ public class Repository {
     }
 
     /**
+     * Read files inside the folders to a map, prepending folders' name.
+     *
+     * @param folders The folders to read
+     * @return The map with key = file name, value = file content
+     */
+    private static Map<String, String> readFolderToMap(File[] folders) {
+        Map<String, String> map = new HashMap<>();
+        for (File folder : folders) {
+            File[] files = folder.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        String content = readContentsAsString(file);
+                        String name = folder.getName() + "/" + file.getName();
+                        if (map.containsKey(content)) {
+                            map.put(content, map.get(content) + ", " + name);
+                        } else {
+                            map.put(content, name);
+                        }
+                    }
+                }
+            }
+        }
+        return map;
+    }
+
+    /**
      * Merge in ordinary case.
      *
      * @param branchName The name of the given branch
      */
     private static void mergeOrdinaryCase(String branchName) {
         Commit currentCommit = getHeadCommit();
-        Commit givenBranchCommit =
-                getCommit(readContentsAsString(join(HEADS_DIR, branchName)));
+        Commit givenBranchCommit =getBranchCommit(branchName);
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
         Map<String, String> filesCurrentCommit = currentCommit.getTrackedFiles();
@@ -1322,8 +1416,7 @@ public class Repository {
      */
     private static void mergeFilesInGiven(String branchName) {
         Commit currentCommit = getHeadCommit();
-        Commit givenBranchCommit =
-                getCommit(readContentsAsString(join(HEADS_DIR, branchName)));
+        Commit givenBranchCommit = getBranchCommit(branchName);
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
         Map<String, String> filesCurrentCommit = currentCommit.getTrackedFiles();
@@ -1407,14 +1500,41 @@ public class Repository {
             idSet.add(currentId);
 
             if (getCommit(currentId, gitletDir).getParent() != null) {
-                String parentId = getCommit(currentId).getParent();
+                String parentId = getCommit(currentId, gitletDir).getParent();
                 idStack.push(parentId);
             }
             if (getCommit(currentId, gitletDir).getSecondParent() != null) {
-                String secondParentId = getCommit(currentId).getSecondParent();
+                String secondParentId = getCommit(currentId, gitletDir).getSecondParent();
                 idStack.push(secondParentId);
             }
         }
         return idSet;
+    }
+
+    /**
+     * Get the head commit of the branch, considering the REF_REMOTES_DIR.
+     *
+     * @param branchName The name of branch, may include "/"
+     * @return The head commit of the branch, null if it doesn't exist
+     */
+    private static Commit getBranchCommit(String branchName) {
+        Commit returnCommit;
+        if (branchName.contains("/")) {
+            String[] parts = branchName.split("/", 2);
+            File branchFile = join(REFS_REMOTES_DIR, parts[0], parts[1]);
+            if (!branchFile.exists()) {
+                return null;
+            }
+            String id = readContentsAsString(branchFile);
+            returnCommit = getCommit(id);
+        } else {
+            File branchFile = join(HEADS_DIR, branchName);
+            if (!branchFile.exists()) {
+                return null;
+            }
+            String id = readContentsAsString(branchFile);
+            returnCommit = getCommit(id);
+        }
+        return returnCommit;
     }
 }
