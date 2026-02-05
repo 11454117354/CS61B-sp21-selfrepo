@@ -744,8 +744,6 @@ public class Repository {
         }
 
         File branchRmFile = join(gitletDirRm, "refs", "heads", remoteBranch);
-        Commit headCommit = getHeadCommit();
-        String headCommitId = headCommit.getId();
         // If the branch in remote repo does not exist, add the branch.
         if (!branchRmFile.exists()) {
             try {
@@ -753,8 +751,59 @@ public class Repository {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            writeContents(branchRmFile, headCommitId);
         }
+
+        // Get the head commit of the remote repo.
+        File headFileDir = join(gitletDirRm, "HEAD");
+        String headBranchRm = readContentsAsString(headFileDir);
+        String headCommitIdRm = readContentsAsString(
+                join(gitletDirRm, "refs", "heads", headBranchRm));
+
+        // Check if it's in local head's history.
+        if (!findCommitIdInHistory(headCommitIdRm)) {
+            quit("Please pull down remote changes before pushing.");
+        }
+
+        // Get the set of commits to copy to repo.
+        Set<String> idsNeedCopying = findCommitsNeedCopying(headCommitIdRm);
+
+        // Copy the commits and blobs to the repo.
+        File commitDirRm = join(gitletDirRm, "objects", "blobs");
+        for (String id : idsNeedCopying) {
+            // Write commit.
+            File commitFileRm = join(commitDirRm, id);
+            File commitFileLc = join(COMMITS_DIR, id);
+            if (commitFileRm.exists()) {
+                continue;
+            }
+            try {
+                commitFileRm.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeObject(commitFileRm, readObject(commitFileLc, Commit.class));
+
+            // Write blobs.
+            Map<String, String> trackedFiles = getCommit(id).getTrackedFiles();
+            for (String trackedFile : trackedFiles.keySet()) {
+                String blobId = trackedFiles.get(trackedFile);
+                File blobFileRm = join(gitletDirRm, "objects", "blobs", blobId);
+                File blobFileLc = join(BLOBS_DIR, blobId);
+
+                if (blobFileRm.exists()) {
+                    continue;
+                }
+                try {
+                    blobFileRm.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                writeContents(blobFileRm, (Object) readContents(blobFileLc));
+            }
+        }
+
+        // Change the branch's head commit.
+        writeContents(branchRmFile, readContentsAsString(HEAD_FILE));
     }
 
     /**
@@ -1217,5 +1266,73 @@ public class Repository {
                 }
             }
         }
+    }
+
+    /**
+     * Find the commit id in local head's history, covering parents and second parents.
+     *
+     * @param findId The id to find
+     * @return True if found
+     */
+    private static boolean findCommitIdInHistory (String findId) {
+        String headCommitId = getHeadCommit().getId();
+        Stack<String> commitIds = new Stack<>();
+        commitIds.push(headCommitId);
+        while (!commitIds.isEmpty()) {
+            String currentId = commitIds.pop();
+            if (getCommit(currentId).getParent() != null) {
+                String parentId = getCommit(currentId).getParent();
+                if (Objects.equals(parentId, findId)) {
+                    return true;
+                } else {
+                    commitIds.push(parentId);
+                }
+            }
+            if (getCommit(currentId).getSecondParent() != null) {
+                String secondParentId = getCommit(currentId).getSecondParent();
+                if (Objects.equals(secondParentId, findId)) {
+                    return true;
+                } else {
+                    commitIds.push(secondParentId);
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Find the ids of the commits that need to get copied to remote repo.
+     *
+     * @param headRmId The head commit in remote repo
+     * @return The set of commit ids
+     */
+    private static Set<String> findCommitsNeedCopying(String headRmId) {
+        String currentCommitId = getHeadCommit().getId();
+        Set<String> idSet = new HashSet<>();
+        Stack<String> idStack = new Stack<>();
+        Set<String> visited = new HashSet<>();
+        idStack.push(currentCommitId);
+        while (!idStack.isEmpty()) {
+            String currentId = idStack.pop();
+            if (visited.contains(currentId)) {
+                continue;
+            }
+            visited.add(currentId);
+
+            if (Objects.equals(currentId, headRmId)) {
+                continue;
+            }
+            idSet.add(currentId);
+
+            if (getCommit(currentId).getParent() != null) {
+                String parentId = getCommit(currentId).getParent();
+                idStack.push(parentId);
+            }
+            if (getCommit(currentId).getSecondParent() != null) {
+                String secondParentId = getCommit(currentId).getSecondParent();
+                idStack.push(secondParentId);
+            }
+        }
+        return idSet;
     }
 }
