@@ -735,10 +735,12 @@ public class Repository {
      */
     public static void push(String remoteName, String remoteBranch) {
         File remoteInfo = join(REMOTE_DIR, remoteName);
+        if (!remoteInfo.exists()) {
+            quit("A remote with that name does not exist.");
+        }
         String remotePath = readContentsAsString(remoteInfo);
-        File remoteDir = Paths.get(remotePath).toFile();
+        File gitletDirRm = Paths.get(remotePath).toFile();
 
-        File gitletDirRm = join(remoteDir, ".gitlet");
         if (!(gitletDirRm.exists() && gitletDirRm.isDirectory())) {
             quit("Remote directory not found.");
         }
@@ -768,7 +770,7 @@ public class Repository {
         Set<String> idsNeedCopying = findCommitsNeedCopying(headCommitIdRm);
 
         // Copy the commits and blobs to the repo.
-        File commitDirRm = join(gitletDirRm, "objects", "blobs");
+        File commitDirRm = join(gitletDirRm, "objects", "commits");
         for (String id : idsNeedCopying) {
             // Write commit.
             File commitFileRm = join(commitDirRm, id);
@@ -803,7 +805,7 @@ public class Repository {
         }
 
         // Change the branch's head commit.
-        writeContents(branchRmFile, readContentsAsString(HEAD_FILE));
+        writeContents(branchRmFile, getHeadCommit().getId());
     }
 
     /**
