@@ -314,34 +314,7 @@ public class Repository {
      */
     public static void status() {
         // Print branches.
-        System.out.println("=== Branches ===");
-        List<String> branchNames = plainFilenamesIn(HEADS_DIR);
-        if (branchNames == null) {
-            branchNames = new ArrayList<>();
-        } else {
-            branchNames = new ArrayList<>(branchNames);
-        }
-        File[] remoteFiles = REFS_REMOTES_DIR.listFiles();
-        if (remoteFiles != null) {
-            for (File remoteFile : remoteFiles) {
-                List<String> branchNamesInRmDir = plainFilenamesIn(remoteFile);
-                if (branchNamesInRmDir != null) {
-                    for (String branchName : branchNamesInRmDir) {
-                        branchNames.add(remoteFile.getName() + "/" + branchName);
-                    }
-                }
-            }
-        }
-        assert branchNames != null;
-        Collections.sort(branchNames);
-        for (String branchName : branchNames) {
-            String currentBranch = readContentsAsString(HEAD_FILE);
-            if (Objects.equals(branchName, currentBranch)) {
-                System.out.print("*");
-            }
-            System.out.println(branchName);
-        }
-        System.out.println();
+        printBranches();
 
         // Print staged files.
         System.out.println("=== Staged Files ===");
@@ -681,14 +654,10 @@ public class Repository {
             }
             System.out.println(currentCommit.getMessage());
 
-            // 如果当前提交是合并提交，计算 split point 并准备分支绘制状态
             if (currentCommit.getSecondParent() != null) {
-                // 保存第一父提交和第二父提交
                 Commit parentCommit = getCommit(currentCommit.getParent());
                 Commit secondParentCommit = getCommit(currentCommit.getSecondParent());
-                // split point 基于两条父分支（parentCommit, secondParentCommit）
                 splitCommit = getSplitPointCommit(parentCommit, secondParentCommit);
-
                 // 打印分支分叉图形并调整行列状态
                 for (int i = 0; i < haveBranches; i++) {
                     System.out.print("| ");
@@ -696,13 +665,12 @@ public class Repository {
                 System.out.println("\\");
                 haveBranches++;
                 onBranch++;
-
                 // 保存回到主分支时要用的 commit（应为当前合并提交的第一父）
                 originalParentCommit = parentCommit;
             }
 
-            // 在进入下一次迭代、移动到下一个提交前：
-            // 如果当前正在遍历第二分支，且当前提交的父指向 split point，则应打印斜线结束分支并回到主分支轨迹。
+            // 在进入下一次迭代、移动到下一个提交前：如果当前正在遍历第二分支，
+            // 且当前提交的父指向 split point，则应打印斜线结束分支并回到主分支轨迹。
             if (!onSecondBranch && splitCommit != null
                     && Objects.equals(currentCommit.getParent(), splitCommit.getId())) {
                 haveBranches--;
@@ -714,7 +682,6 @@ public class Repository {
             if (currentCommit.getParent() == null) {
                 break;
             }
-
             // 移动到下一个提交：
             if (currentCommit.getSecondParent() != null) {
                 // 先跳到第二父分支开始遍历第二支线
@@ -1276,6 +1243,40 @@ public class Repository {
     }
 
     /**
+     * Print out branches, including remote branches, in status.
+     */
+    private static void printBranches() {
+        System.out.println("=== Branches ===");
+        List<String> branchNames = plainFilenamesIn(HEADS_DIR);
+        if (branchNames == null) {
+            branchNames = new ArrayList<>();
+        } else {
+            branchNames = new ArrayList<>(branchNames);
+        }
+        File[] remoteFiles = REFS_REMOTES_DIR.listFiles();
+        if (remoteFiles != null) {
+            for (File remoteFile : remoteFiles) {
+                List<String> branchNamesInRmDir = plainFilenamesIn(remoteFile);
+                if (branchNamesInRmDir != null) {
+                    for (String branchName : branchNamesInRmDir) {
+                        branchNames.add(remoteFile.getName() + "/" + branchName);
+                    }
+                }
+            }
+        }
+        assert branchNames != null;
+        Collections.sort(branchNames);
+        for (String branchName : branchNames) {
+            String currentBranch = readContentsAsString(HEAD_FILE);
+            if (Objects.equals(branchName, currentBranch)) {
+                System.out.print("*");
+            }
+            System.out.println(branchName);
+        }
+        System.out.println();
+    }
+
+    /**
      * Read files inside a folder to a map.
      *
      * @param folder The folder to read
@@ -1334,7 +1335,7 @@ public class Repository {
      */
     private static void mergeOrdinaryCase(String branchName) {
         Commit currentCommit = getHeadCommit();
-        Commit givenBranchCommit =getBranchCommit(branchName);
+        Commit givenBranchCommit = getBranchCommit(branchName);
         Commit splitPointCommit = getSplitPointCommit(currentCommit, givenBranchCommit);
 
         Map<String, String> filesCurrentCommit = currentCommit.getTrackedFiles();
@@ -1449,7 +1450,7 @@ public class Repository {
      * @param findId The id to find
      * @return True if found
      */
-    private static boolean findCommitIdInHistory (String findId) {
+    private static boolean findCommitIdInHistory(String findId) {
         String headCommitId = getHeadCommit().getId();
         Stack<String> commitIds = new Stack<>();
         commitIds.push(headCommitId);
