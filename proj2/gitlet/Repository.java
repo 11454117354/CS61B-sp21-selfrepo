@@ -891,13 +891,12 @@ public class Repository {
         // Create a new branch in local.
         File branchDir = join(REFS_REMOTES_DIR, remoteName);
         File branchFile = join(branchDir, remoteBranch);
-        if (branchFile.exists()) {
-            quit("A branch with that name already exists.");
-        }
-        try {
-            branchFile.createNewFile();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (!branchFile.exists()) {
+            try {
+                branchFile.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         writeContents(branchFile, headIdRm);
     }
