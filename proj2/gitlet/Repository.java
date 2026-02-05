@@ -739,8 +739,6 @@ public class Repository {
             quit("A remote with that name does not exist.");
         }
         removeRemoteFile.delete();
-        File remoteBranchDir = join(REFS_REMOTES_DIR, remoteName);
-        remoteBranchDir.delete();
     }
 
     /**
@@ -907,7 +905,13 @@ public class Repository {
     public static void pull(String remoteName, String remoteBranch) {
         checkUntrackedFiles();
         fetch(remoteName, remoteBranch);
-        merge(remoteName + "/" + remoteBranch);
+        String branchName = remoteName + "/" + remoteBranch;
+        merge(branchName);
+
+        String currentBranchName = readContentsAsString(HEAD_FILE);
+        String message = "Merged " + branchName + " into " + currentBranchName + ".";
+        Commit givenBranchCommit = getBranchCommit(branchName);
+        commit(message, givenBranchCommit.getId());
     }
 
     /**
