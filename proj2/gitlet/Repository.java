@@ -15,12 +15,6 @@ import static gitlet.Utils.*;
  *  @author Chen
  */
 public class Repository {
-    /**
-     * List all instance variables of the Repository class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided two examples for you.
-     */
-
     /** The current working directory. */
     public static final File CWD = new File(System.getProperty("user.dir"));
     /** Directories. */
@@ -767,7 +761,9 @@ public class Repository {
         }
 
         // Get the set of commits to copy to repo.
-        Set<String> idsNeedCopying = findCommitsNeedCopying(headCommitIdRm);
+        String currentCommitId = getHeadCommit().getId();
+        Set<String> idsNeedCopying = findCommitsNeedCopying(
+                headCommitIdRm, currentCommitId, GITLET_DIR);
 
         // Copy the commits and blobs to the repo.
         File commitDirRm = join(gitletDirRm, "objects", "commits");
@@ -805,7 +801,80 @@ public class Repository {
         }
 
         // Change the branch's head commit.
-        writeContents(branchRmFile, getHeadCommit().getId());
+        writeContents(branchRmFile, currentCommitId);
+    }
+
+    /**
+     * Get all the commits in remote repo to local repo, create a new branch in local,
+     * but not merge.
+     *
+     * @param remoteName The name of remote repo to fetch from
+     * @param remoteBranch The branch of remote repo to fetch
+     */
+    public static void fetch(String remoteName, String remoteBranch) {
+        File remoteInfo = join(REMOTE_DIR, remoteName);
+        if (!remoteInfo.exists()) {
+            quit("A remote with that name does not exist.");
+        }
+        String remotePath = readContentsAsString(remoteInfo);
+        File gitletDirRm = Paths.get(remotePath).toFile();
+
+        if (!(gitletDirRm.exists() && gitletDirRm.isDirectory())) {
+            quit("Remote directory not found.");
+        }
+
+        File branchRmFile = join(gitletDirRm, "refs", "heads", remoteBranch);
+        if (!branchRmFile.exists()) {
+            quit("That remote does not have that branch.");
+        }
+
+        // Create a new branch in local.
+        String branchName = remoteName + "/" + remoteBranch;
+        branch(branchName);
+
+        // Get the set of commits to copy to local repo.
+        String headIdLc = getHeadCommit().getId();
+        String headIdRm = readContentsAsString(branchRmFile);
+        Set<String> idsNeedCopying = findCommitsNeedCopying(headIdLc, headIdRm, gitletDirRm);
+
+        // Copy all files into local repo.
+        File commitDirRm = join(gitletDirRm, "objects", "commits");
+        for (String id : idsNeedCopying) {
+            // Write commit.
+            File commitFileRm = join(commitDirRm, id);
+            File commitFileLc = join(COMMITS_DIR, id);
+            if (commitFileLc.exists()) {
+                continue;
+            }
+            try {
+                commitFileLc.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            writeObject(commitFileLc, readObject(commitFileRm, Commit.class));
+
+            // Write blobs.
+            Map<String, String> trackedFiles = getCommit(id, gitletDirRm).getTrackedFiles();
+            for (String trackedFile : trackedFiles.keySet()) {
+                String blobId = trackedFiles.get(trackedFile);
+                File blobFileRm = join(gitletDirRm, "objects", "blobs", blobId);
+                File blobFileLc = join(BLOBS_DIR, blobId);
+
+                if (blobFileLc.exists()) {
+                    continue;
+                }
+                try {
+                    blobFileRm.createNewFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                writeContents(blobFileLc, (Object) readContents(blobFileRm));
+            }
+        }
+
+        // Set the branch's head.
+        File branchFile = join(HEADS_DIR, branchName);
+        writeContents(branchFile, headIdRm);
     }
 
     /**
@@ -825,6 +894,17 @@ public class Repository {
      */
     private static Commit getCommit(String id) {
         return readObject(join(COMMITS_DIR, id), Commit.class);
+    }
+
+    /**
+     * Get the commit by its id from the given gitletDir.
+     *
+     * @param id The id of the commit
+     * @param gitletDir The directory to find the commit
+     * @return The commit corresponding to this id
+     */
+    private static Commit getCommit(String id, File gitletDir) {
+        return readObject(join(gitletDir, "objects", "commits", id), Commit.class);
     }
 
     /**
@@ -1305,11 +1385,11 @@ public class Repository {
     /**
      * Find the ids of the commits that need to get copied to remote repo.
      *
-     * @param headRmId The head commit in remote repo
+     * @param headId The head commit in remote repo
      * @return The set of commit ids
      */
-    private static Set<String> findCommitsNeedCopying(String headRmId) {
-        String currentCommitId = getHeadCommit().getId();
+    private static Set<String> findCommitsNeedCopying(
+            String headId, String currentCommitId, File gitletDir) {
         Set<String> idSet = new HashSet<>();
         Stack<String> idStack = new Stack<>();
         Set<String> visited = new HashSet<>();
@@ -1321,16 +1401,16 @@ public class Repository {
             }
             visited.add(currentId);
 
-            if (Objects.equals(currentId, headRmId)) {
+            if (Objects.equals(currentId, headId)) {
                 continue;
             }
             idSet.add(currentId);
 
-            if (getCommit(currentId).getParent() != null) {
+            if (getCommit(currentId, gitletDir).getParent() != null) {
                 String parentId = getCommit(currentId).getParent();
                 idStack.push(parentId);
             }
-            if (getCommit(currentId).getSecondParent() != null) {
+            if (getCommit(currentId, gitletDir).getSecondParent() != null) {
                 String secondParentId = getCommit(currentId).getSecondParent();
                 idStack.push(secondParentId);
             }

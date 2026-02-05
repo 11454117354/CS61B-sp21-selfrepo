@@ -111,6 +111,11 @@ public class Main {
                 validateNumArgs(args, 3);
                 Repository.push(args[1], args[2]);
                 break;
+            case "fetch":
+                checkInit();
+                validateNumArgs(args, 3);
+                Repository.fetch(args[1], args[2]);
+                break;
 
             default:
                 throwError("No command with that name exists.");
