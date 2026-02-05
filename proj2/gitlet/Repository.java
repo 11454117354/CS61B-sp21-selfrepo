@@ -904,6 +904,12 @@ public class Repository {
         writeContents(branchFile, headIdRm);
     }
 
+    public static void pull(String remoteName, String remoteBranch) {
+        checkUntrackedFiles();
+        fetch(remoteName, remoteBranch);
+        merge(remoteName + "/" + remoteBranch);
+    }
+
     /**
      * Get the head commit by getting HEAD id in persistence.
      */
