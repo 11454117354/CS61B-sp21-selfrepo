@@ -723,8 +723,6 @@ public class Repository {
         File remoteBranchDir = join(REFS_REMOTES_DIR, remoteName);
         if (!remoteBranchDir.exists()) {
             remoteBranchDir.mkdir();
-        } else {
-            quit("Conflict in creating directory.");
         }
     }
 
