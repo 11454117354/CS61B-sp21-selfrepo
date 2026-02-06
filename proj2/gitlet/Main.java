@@ -106,6 +106,7 @@ public class Main {
                 checkInit();
                 validateNumArgs(args, 2);
                 Repository.removeRemote(args[1]);
+                break;
             case "push":
                 checkInit();
                 validateNumArgs(args, 3);

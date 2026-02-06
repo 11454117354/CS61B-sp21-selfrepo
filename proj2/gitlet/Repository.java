@@ -906,11 +906,6 @@ public class Repository {
         fetch(remoteName, remoteBranch);
         String branchName = remoteName + "/" + remoteBranch;
         merge(branchName);
-
-        String currentBranchName = readContentsAsString(HEAD_FILE);
-        String message = "Merged " + branchName + " into " + currentBranchName + ".";
-        Commit givenBranchCommit = getBranchCommit(branchName);
-        commit(message, givenBranchCommit.getId());
     }
 
     /**
